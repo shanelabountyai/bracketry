@@ -27,6 +27,8 @@
     "seed:demo:test": "dotenv -e .env.test -e .env.local -- tsx scripts/seed-demo.ts",
     "db:setup": "tsx scripts/db-setup.ts",
     "new-project": "tsx scripts/new-project.ts",
+    "league": "tsx scripts/league.ts",
+    "pending:check": "tsx scripts/pending-check.ts",
     "foundation:drift": "tsx scripts/foundation-drift.ts",
     "foundation:status": "tsx scripts/foundation-status.ts",
     "foundation:check-modules": "tsx scripts/foundation-check-modules.ts"

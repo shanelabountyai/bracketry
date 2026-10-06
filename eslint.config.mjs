@@ -18,6 +18,25 @@ const config = [
       }],
     },
   },
+  // D-3/D-4: the engine is pure and deterministic. No clock, no randomness, no I/O layers.
+  {
+    files: ['src/lib/league/**'],
+    rules: {
+      'no-restricted-properties': ['error',
+        { object: 'Math', property: 'random', message: 'Use mulberry32(seed) from prng.ts (D-3).' },
+        { object: 'Date', property: 'now', message: 'The engine has no clock (D-3).' },
+      ],
+      'no-restricted-syntax': ['error',
+        { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: 'The engine has no clock (D-3).' },
+      ],
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['@/core', '@/core/**', '@/app', '@/app/**', '@/modules', '@/modules/**', '**/core/**', '**/app/**', '**/modules/**'], message: 'src/lib/league is pure: no imports from core, app or modules (D-3).' },
+          { group: ['@prisma/*', '@/generated', '@/generated/**', '**/generated/**', 'prisma'], message: 'src/lib/league is pure: no Prisma (D-3).' },
+        ],
+      }],
+    },
+  },
 ];
 
 export default config;
