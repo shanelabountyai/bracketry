@@ -18,7 +18,7 @@ One item per session, top to bottom. ✅ built and committed, ⬜ not started (`
 
 | # | ID | Item | Stories / decisions | Size | Model | Depends on |
 |---|---|---|---|---|---|---|
-| 4 | ⬜ L-003 | `roundRobin` and `gameKey`. Rename `league-round-robin.pending.ts` → `.test.ts`, red, then green. CLI: `league pairings --teams 7` prints rounds and byes | GEN-02; spec 01 §2 | S | Sonnet | L-002 |
+| 4 | ✅ L-003 | `roundRobin` and `gameKey`. Rename `league-round-robin.pending.ts` → `.test.ts`, red, then green. CLI: `league pairings --teams 7` prints rounds and byes | GEN-02; spec 01 §2 | S | Sonnet | L-002 |
 | 5 | ⬜ L-004 | `checkFeasibility` with the four worked fixtures and the doubleheader case. CLI: `league feasibility` on a JSON input file | GEN-01; D-8; spec 01 §3 | S | Sonnet | L-003 |
 | 6 | ⬜ L-005 | `scoreSchedule`: six hard codes, five soft codes, plain-language details. The bad-schedule fixture must score exactly 6 and 31 | GEN-05, QUAL-01; D-4; spec 01 §4 | M | Opus | L-004 |
 | 7 | ⬜ L-006 | `generateSchedule` and `repair`: greedy draft, local search, acceptance rule, bounds, determinism, pins, unplaced-not-illegal. Capstone soft cost within 100–130. **Before writing the loop, show the owner the move set and how iteration order is kept deterministic, and wait.** Record the measured before/after, iterations and wall time in `docs/PROGRESS.md` | GEN-03 to GEN-07; D-2, D-3, D-5, D-9; spec 01 §5–§6 | L | Opus | L-005 |

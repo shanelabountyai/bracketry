@@ -1,3 +1,3 @@
 # NEXT
 
-PICK UP HERE: L-003 (round robin, Sonnet). Read spec 01 §0–§2 and types.ts; rename tests/unit/league-round-robin.pending.ts to .test.ts, confirm 77 tests fail, implement gameKey and roundRobin, add `league pairings --teams N [--legs 2]`.
+PICK UP HERE: L-004 (`checkFeasibility`, Sonnet). Read spec 01 §3 and D-8; rename tests/unit/league-feasibility.pending.ts to .test.ts, confirm it fails with NotImplementedError, implement the three necessary conditions (each shortfall's `detail` a full sentence with its numbers), add `league feasibility <file.json>`, then show the report for 9 teams over 4 weeks as a commissioner would read it.
