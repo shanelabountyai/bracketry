@@ -1,5 +1,8 @@
 // `npm run league -- <command> [args]`. Later items register commands here.
+import { readFileSync } from 'node:fs';
+import { checkFeasibility } from '@/lib/league/feasibility';
 import { roundRobin } from '@/lib/league/round-robin';
+import type { ScheduleInput } from '@/lib/league/types';
 
 const flag = (args: string[], name: string) => args[args.indexOf(`--${name}`) + 1];
 
@@ -14,6 +17,14 @@ const commands: Record<string, ((args: string[]) => void) | undefined> = {
       const bye = rr.byes[i]!.length ? `  (bye: ${rr.byes[i]!.join(', ')})` : '';
       console.log(`Round ${i + 1}: ${round.map((p) => `${p.home} v ${p.away}`).join(' | ')}${bye}`);
     });
+  },
+  // league feasibility <file.json>   (a ScheduleInput)
+  feasibility(args) {
+    if (!args[0]) throw new Error('Usage: league feasibility <file.json>');
+    const f = checkFeasibility(JSON.parse(readFileSync(args[0], 'utf8')) as ScheduleInput);
+    console.log(`${f.gamesNeeded} games, ${f.slotsAvailable} slots, room for ${f.effectiveCapacity} once teams, blackouts and daily limits are counted.`);
+    if (f.feasible) console.log('No necessary condition fails: these inputs could fit. The generator may still leave games unplaced.');
+    else for (const s of f.shortfalls) console.log(`- ${s.code}: ${s.detail}`);
   },
 };
 
