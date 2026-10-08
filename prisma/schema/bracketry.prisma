@@ -1,0 +1,347 @@
+// Bracketry's own tables (PRD §8). Days are CHAR(10) 'YYYY-MM-DD', wall times CHAR(5) 'HH:MM' (D-6).
+// The hand-written half lives in the migration SQL, because Prisma cannot express it:
+//   - the partial unique index allowing one published version per season (D-10)
+//   - the partial unique index allowing one original result per game (D-13)
+//   - the append-only triggers on GameResult and TieResolution (D-13)
+//   - the CHECK constraints (day and time shape, legs, weekday, runs, home <> away)
+// createdBy / enteredBy / decidedBy hold a user id with no FK, as AuditEvent.actorUserId does: they survive
+// user deletion, and an ON DELETE SET NULL would be refused by the append-only triggers.
+
+enum SeasonStatus {
+  setup
+  active
+  closed
+}
+
+enum SlotStatus {
+  open
+  closed
+  makeup
+}
+
+enum ScheduleStatus {
+  draft
+  published
+  superseded
+}
+
+enum Side {
+  home
+  away
+}
+
+enum BracketSide {
+  a
+  b
+}
+
+model Season {
+  id                     String            @id @default(uuid()) @db.Uuid
+  orgId                  String            @db.Uuid
+  org                    Org               @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name                   String
+  timezone               String // IANA name; the season's one timezone (D-6)
+  firstDay               String            @db.Char(10)
+  lastDay                String            @db.Char(10)
+  gameMinutes            Int
+  status                 SeasonStatus      @default(setup)
+  rules                  Json // Rules (src/lib/league/types.ts)
+  standingsConfig        Json // StandingsConfig, without manualResolutions: those are TieResolution rows
+  standingsConfigVersion Int               @default(1)
+  createdAt              DateTime          @default(now()) @db.Timestamptz(6)
+  divisions              Division[]
+  teams                  Team[]
+  slotPatterns           SlotPattern[]
+  fieldSlots             FieldSlot[]
+  games                  Game[]
+  pins                   Pin[]
+  scheduleVersions       ScheduleVersion[]
+  placements             Placement[]
+
+  @@index([orgId])
+}
+
+model Division {
+  id             String          @id @default(uuid()) @db.Uuid
+  orgId          String          @db.Uuid
+  org            Org             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId       String          @db.Uuid
+  season         Season          @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  name           String
+  legs           Int // 1 or 2 (CHECK)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  teams          Team[]
+  games          Game[]
+  tieResolutions TieResolution[]
+  bracket        Bracket?
+
+  @@unique([seasonId, name])
+  @@index([orgId])
+}
+
+model Team {
+  id           String        @id @default(uuid()) @db.Uuid
+  orgId        String        @db.Uuid
+  org          Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId     String        @db.Uuid
+  season       Season        @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  divisionId   String        @db.Uuid
+  division     Division      @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  name         String
+  contactEmail String? // internal: never in a public projection (PUB-03)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(6)
+  blackouts    Blackout[]
+  homeGames    Game[]        @relation("HomeTeam")
+  awayGames    Game[]        @relation("AwayTeam")
+  bracketAs    BracketGame[] @relation("BracketA")
+  bracketBs    BracketGame[] @relation("BracketB")
+  bracketWins  BracketGame[] @relation("BracketWinner")
+
+  @@unique([seasonId, name])
+  @@index([divisionId])
+  @@index([orgId])
+}
+
+model Field {
+  id           String        @id @default(uuid()) @db.Uuid
+  orgId        String        @db.Uuid
+  org          Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name         String
+  createdAt    DateTime      @default(now()) @db.Timestamptz(6)
+  slotPatterns SlotPattern[]
+  fieldSlots   FieldSlot[]
+
+  @@unique([orgId, name])
+}
+
+/// The weekly rule. FieldSlot rows are materialized from it.
+model SlotPattern {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @db.Uuid
+  org       Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId  String   @db.Uuid
+  season    Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  weekday   Int      @db.SmallInt // 0 = Sunday … 6 = Saturday (CHECK)
+  start     String   @db.Char(5)
+  fieldId   String   @db.Uuid
+  field     Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([seasonId, weekday, start, fieldId])
+  @@index([fieldId])
+  @@index([orgId])
+}
+
+model FieldSlot {
+  id          String       @id @default(uuid()) @db.Uuid
+  orgId       String       @db.Uuid
+  org         Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId    String       @db.Uuid
+  season      Season       @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  day         String       @db.Char(10)
+  start       String       @db.Char(5)
+  fieldId     String       @db.Uuid
+  field       Field        @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  status      SlotStatus   @default(open)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(6)
+  pins        Pin[] // at most one, by Pin.fieldSlotId's unique index
+  placements  Placement[]
+  bracketGame BracketGame?
+
+  @@unique([seasonId, day, start, fieldId])
+  @@unique([id, seasonId]) // target of the same-season FKs on Pin and Placement
+  @@index([fieldId])
+  @@index([orgId])
+}
+
+model Blackout {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @db.Uuid
+  org       Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId    String   @db.Uuid
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  day       String   @db.Char(10)
+  reason    String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([teamId, day])
+  @@index([orgId])
+}
+
+/// A regular-season pairing. Playoff games are BracketGame rows.
+model Game {
+  id         String       @id @default(uuid()) @db.Uuid
+  orgId      String       @db.Uuid
+  org        Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId   String       @db.Uuid
+  season     Season       @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  divisionId String       @db.Uuid
+  division   Division     @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  key        String // Pairing.key, `L${leg}:${a}~${b}`
+  round      Int
+  leg        Int // 1 or 2 (CHECK)
+  homeTeamId String       @db.Uuid
+  homeTeam   Team         @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeamId String       @db.Uuid
+  awayTeam   Team         @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now()) @db.Timestamptz(6)
+  pins       Pin[] // at most one, by Pin.gameId's unique index
+  placements Placement[]
+  results    GameResult[]
+
+  @@unique([seasonId, key])
+  @@unique([id, seasonId]) // target of the same-season FKs on Pin and Placement
+  @@index([divisionId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([orgId])
+}
+
+model Pin {
+  id          String    @id @default(uuid()) @db.Uuid
+  orgId       String    @db.Uuid
+  org         Org       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId    String    @db.Uuid
+  season      Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  gameId      String    @unique @db.Uuid
+  game        Game      @relation(fields: [gameId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  fieldSlotId String    @unique @db.Uuid // two games pinned to one slot is refused here, not checked first
+  fieldSlot   FieldSlot @relation(fields: [fieldSlotId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([seasonId])
+  @@index([orgId])
+}
+
+/// Append-only in practice (D-10): only status, reason and publishedAt change, when a version is published
+/// or superseded. migration SQL (hand-written): one published version per season.
+model ScheduleVersion {
+  id          String         @id @default(uuid()) @db.Uuid
+  orgId       String         @db.Uuid
+  org         Org            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId    String         @db.Uuid
+  season      Season         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  number      Int
+  seed        BigInt // uint32 (CHECK); mulberry32 takes seed >>> 0
+  inputHash   String
+  fingerprint String
+  status      ScheduleStatus @default(draft)
+  report      Json // ScoreReport of the stored assignment
+  iterations  Int
+  accepted    Int
+  reason      String?
+  createdBy   String         @db.Uuid
+  publishedAt DateTime?      @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @db.Timestamptz(6)
+  placements  Placement[]
+
+  @@unique([seasonId, number])
+  @@unique([id, seasonId]) // target of the same-season FK on Placement
+  @@index([orgId])
+}
+
+/// Never updated (D-10). A game with no row in a version is unplaced there (D-9).
+model Placement {
+  id                String          @id @default(uuid()) @db.Uuid
+  orgId             String          @db.Uuid
+  org               Org             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  seasonId          String          @db.Uuid
+  season            Season          @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  scheduleVersionId String          @db.Uuid
+  scheduleVersion   ScheduleVersion @relation(fields: [scheduleVersionId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  gameId            String          @db.Uuid
+  game              Game            @relation(fields: [gameId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  fieldSlotId       String          @db.Uuid
+  fieldSlot         FieldSlot       @relation(fields: [fieldSlotId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  createdAt         DateTime        @default(now()) @db.Timestamptz(6)
+
+  @@unique([scheduleVersionId, gameId]) // D-11
+  @@unique([scheduleVersionId, fieldSlotId]) // D-11
+  @@index([gameId])
+  @@index([fieldSlotId])
+  @@index([seasonId])
+  @@index([orgId])
+}
+
+/// Append-only by trigger (D-13). A correction is a new row whose supersedesId names the row it replaces;
+/// the current result of a game is the row nothing supersedes.
+/// migration SQL (hand-written): one original (supersedesId IS NULL) per game.
+model GameResult {
+  id           String       @id @default(uuid()) @db.Uuid
+  orgId        String       @db.Uuid
+  org          Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  gameId       String       @db.Uuid
+  game         Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  homeRuns     Int
+  awayRuns     Int
+  forfeit      Side? // the side that forfeited
+  supersedesId String?      @unique @db.Uuid // a result is superseded at most once
+  supersedes   GameResult?  @relation("Supersedes", fields: [supersedesId, gameId], references: [id, gameId], onDelete: Cascade)
+  supersededBy GameResult[] @relation("Supersedes") // at most one, by the unique above
+  reason       String?
+  enteredBy    String       @db.Uuid
+  enteredAt    DateTime     @default(now()) @db.Timestamptz(6)
+
+  @@unique([id, gameId]) // target of the same-game FK on supersedesId
+  @@index([gameId])
+  @@index([orgId])
+}
+
+/// Append-only by trigger (D-13, D-22). The last row listing exactly a group's teams wins.
+model TieResolution {
+  id         String   @id @default(uuid()) @db.Uuid
+  orgId      String   @db.Uuid
+  org        Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  divisionId String   @db.Uuid
+  division   Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  teamIds    Json // team ids in final order
+  method     String // "coin flip"
+  decidedBy  String   @db.Uuid
+  decidedAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([divisionId, decidedAt])
+  @@index([orgId])
+}
+
+/// One per division; regenerating deletes and recreates it. The seeding is a frozen snapshot (D-15).
+model Bracket {
+  id                   String        @id @default(uuid()) @db.Uuid
+  orgId                String        @db.Uuid
+  org                  Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  divisionId           String        @unique @db.Uuid
+  division             Division      @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  size                 Int
+  seeding              Json
+  standingsFingerprint String
+  createdBy            String        @db.Uuid
+  createdAt            DateTime      @default(now()) @db.Timestamptz(6)
+  games                BracketGame[]
+
+  @@index([orgId])
+}
+
+model BracketGame {
+  id           String       @id @default(uuid()) @db.Uuid
+  orgId        String       @db.Uuid
+  org          Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  bracketId    String       @db.Uuid
+  bracket      Bracket      @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  matchId      String // BracketMatch.id, `R${round}M${index}`
+  round        Int
+  index        Int
+  aTeamId      String?      @db.Uuid
+  aTeam        Team?        @relation("BracketA", fields: [aTeamId], references: [id], onDelete: Cascade)
+  bTeamId      String?      @db.Uuid
+  bTeam        Team?        @relation("BracketB", fields: [bTeamId], references: [id], onDelete: Cascade)
+  aRuns        Int?
+  bRuns        Int?
+  forfeit      BracketSide?
+  winnerTeamId String?      @db.Uuid
+  winnerTeam   Team?        @relation("BracketWinner", fields: [winnerTeamId], references: [id], onDelete: Cascade)
+  fieldSlotId  String?      @unique @db.Uuid // two playoff games in one slot is refused here
+  fieldSlot    FieldSlot?   @relation(fields: [fieldSlotId], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now()) @db.Timestamptz(6)
+
+  @@unique([bracketId, matchId])
+  @@index([orgId])
+}

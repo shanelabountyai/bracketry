@@ -85,6 +85,21 @@ model Org {
   // module back-relations: each line ends in its module marker (spec §4)
   billingAccount BillingAccount? // billing
   outbox         Outbox[] // notifications
+  seasons Season[] // app
+  divisions Division[] // app
+  teams Team[] // app
+  fields Field[] // app
+  slotPatterns SlotPattern[] // app
+  fieldSlots FieldSlot[] // app
+  blackouts Blackout[] // app
+  games Game[] // app
+  pins Pin[] // app
+  scheduleVersions ScheduleVersion[] // app
+  placements Placement[] // app
+  gameResults GameResult[] // app
+  tieResolutions TieResolution[] // app
+  brackets Bracket[] // app
+  bracketGames BracketGame[] // app
 }
 
 model Membership {

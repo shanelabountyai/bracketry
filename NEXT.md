@@ -1,13 +1,15 @@
 # NEXT
 
-PICK UP HERE: L-011, data model and migrations (**Opus** per the backlog). Read 00-master-prd.md §8 and D-6, D-10, D-11, D-13. **Show the entity list and the exact SQL for the unique indexes, the partial unique index on the published version and the two append-only triggers first, and wait for the owner.** Then `prisma/schema/bracketry.prisma`, the migrations, and constraint tests that write conflicting rows straight to the database. The prompt is in docs/START-HERE.md ("From L-011 on").
+PICK UP HERE: L-012, season setup (**Sonnet** per the backlog). Read SEASON-01 to SEASON-06 in 00-master-prd.md and D-16, plus D-24 to D-26 from L-011. Season, divisions, teams, fields, weekly slot patterns materialized to slots, close/add a slot, blackouts with bulk holiday entry, rules form with defaults. Every action goes through the foundation's authorization path, with the invariant harness rows added in `tests/fixtures/app.ts`. Write and map the unique violation (constraint names are in `tests/integration/league-constraints.test.ts`); never check-then-write.
+
+Watch at L-012: the first full `npm test` after the L-011 migration took 369 s, the second 29 s, cause unknown (PROGRESS L-011, Left behind). Reset league rows by deleting the org, not by TRUNCATE. Do not run `prisma format` over `prisma/schema`: it realigns the template's `core.prisma`.
 
 Needs the owner: D-23 (the caller keeps past open slots out of the reschedule inventory) was taken as a default at L-010. Confirm or replace it before L-017.
 
-Open from L-007: `reschedule` orders displaced games by old slot id, which is calendar order only while ids are `day|start|field`. Settle at L-011/L-017 (see PROGRESS L-007, Left behind).
-
 Open from L-008: standings notes carry team ids, not names (D-22). L-016 (standings page) substitutes names; the capstone already does it with a regex.
 
-Open from L-009: no function clears a bracket result, and the spec's correction rule asks for one; `Bracket` holds no standings fingerprint (D-15). Both land at L-018 (see PROGRESS L-009, Left behind).
+Open from L-009: no function clears a bracket result, and the spec's correction rule asks for one. Both that and the D-15 fingerprint check land at L-018 (`Bracket.standingsFingerprint` now exists).
 
-Open from L-010: the capstone season is imported from `tests/unit/league-fixtures.ts`. If L-011's seed data defines the same league, make one source for both.
+Open from L-010: the capstone season is imported from `tests/unit/league-fixtures.ts`. If L-021's seed data defines the same league, make one source for both.
+
+Open from L-011: the engine's slot id is `day|start|fieldId` (D-24); the loader that builds it lands at L-013.
