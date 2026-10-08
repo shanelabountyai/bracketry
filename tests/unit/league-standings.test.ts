@@ -108,3 +108,27 @@ describe('ST-9 before a game is played', () => {
     expect(rows.every((x) => x.played === 0 && x.points === 0)).toBe(true);
   });
 });
+
+describe('L-008 where the spec leaves a choice', () => {
+  const st4 = [r('A', 15, 'B', 0), r('C', 8, 'D', 0)];
+  it('drops a result naming a team outside the list, for both sides', () => {
+    const rows = computeStandings(['A', 'B'], [r('A', 3, 'B', 1), r('Z', 9, 'A', 0)], DEFAULT_STANDINGS);
+    expect(rows[0]).toMatchObject({ team: 'A', played: 1, points: 2, runsAgainst: 1 });
+  });
+  it('STAND-05: the last logged decision for a group wins, and one listing other teams does not apply', () => {
+    const corrected = computeStandings(ABCD, st4, { ...DEFAULT_STANDINGS, manualResolutions: [['A', 'C'], ['C', 'A']] });
+    expect(order(corrected).slice(0, 2)).toEqual(['1:C:manual', '2:A:manual']);
+    const stale = computeStandings(ABCD, st4, { ...DEFAULT_STANDINGS, manualResolutions: [['C', 'A', 'B']] });
+    expect(order(stale).slice(0, 2)).toEqual(['1:A:unresolved', '1:C:unresolved']);
+  });
+  it('writes a note for every kind of row', () => {
+    const rows = computeStandings(ABCD, st4, { ...DEFAULT_STANDINGS, manualResolutions: [['B', 'D']] });
+    expect(rows.map((x) => x.note)).toEqual([
+      '1st, tied with C: no tiebreak step separates them',
+      '1st, tied with A: no tiebreak step separates them',
+      '3rd via overall runs allowed over B',
+      '4th via overall runs allowed behind D',
+    ]);
+    expect(computeStandings(['A', 'B'], [r('A', 1, 'B', 0)], DEFAULT_STANDINGS).map((x) => x.note)).toEqual(['1st on points', '2nd on points']);
+  });
+});

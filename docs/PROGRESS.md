@@ -1,5 +1,15 @@
 # Progress
 
+## L-008: computeStandings (2026-10-08)
+
+**Built.** `computeStandings` in `src/lib/league/standings.ts` (spec 02 §1 to §4). One `tally` function builds the table: played, W/L/T, points, raw runs for and against, and the margin clamped to ±`runDiffCap`. A forfeit is a win and a loss whatever the forfeit score, and enters the runs only when `forfeitCountsInRuns` is set. `tally` drops any result naming a team outside its list, so calling it with a tied group is the 'tied' scope: there is no second counting path. `resolve(group, step)` follows the spec's pseudocode line for line: skip a tied-scope step until the group is balanced, split by value best first, restart or continue for a part still tied, then a manual resolution or a shared rank. Suite renamed `.pending.ts` to `.test.ts`. The counting was restated to the owner and confirmed before any code was written.
+
+**Decided.** D-22, where the spec is silent. Two manual resolutions for the same teams: the last one wins. Team id order is code-unit order (`sort()`), not `localeCompare`, so it cannot change with the locale. A forfeit counts as a meeting for the balanced check. Notes: "1st via head-to-head over B", "2nd via head-to-head behind A", "3rd via overall runs allowed over B", "4th on points", "1st by commissioner decision over A", "1st, tied with C: no tiebreak step separates them". Nothing is drawn at random: there is no PRNG import in the file.
+
+**Measured.** Red first: 13 tests, 13 NotImplementedError. Green: 16/16 (13 from the suite with no expected value changed, plus 3 added for the choices above, each worked from ST-4). Gate: lint 0 errors (7 warnings, down from 10: the stub's unused parameters are gone), typecheck clean, 289 tests across 35 files, `foundation:drift` clean against v1.2.0. `pending:check`: 17 tests in one suite, 13 NotImplementedError.
+
+**Left behind.** Notes carry team ids; L-016 (standings page) must substitute names. The caller passes current results only: `GameResult` has no id or `supersedesId`, so dropping superseded rows is the loader's job (D-13). A result where home and away are the same team is not rejected here. Each tied-scope step re-tallies the results for its group, which is nothing at league size (tens of games).
+
 ## L-007: reschedule (2026-10-08)
 
 **Built.** `reschedule` in `src/lib/league/schedule.ts` (spec §7). A game is displaced when its slot is in `removedSlotIds` or is no longer in the inventory. The displaced games are lifted out, and each in turn is tried in every free slot: it takes the one that adds no hard violation and gives the lowest soft cost, the earliest in (day, start, field) order on a tie, and is unplaced when there is none (D-9). Legality and cost are both `scoreSchedule` on the candidate assignment (D-4); the "adds no hard violation" baseline is the same one `greedyDraft` uses, and `bySlot` is reused. No other game is touched (D-12). Suite renamed `.pending.ts` to `.test.ts`.
