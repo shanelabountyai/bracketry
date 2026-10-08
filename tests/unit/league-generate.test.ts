@@ -1,9 +1,9 @@
-// PENDING in the starter: rename to .test.ts when the item starts (L-006 generate + repair, L-007 reschedule). Spec: docs/prds/01-generator-spec.md §5–§7.
+// L-006 generate + repair. Spec: docs/prds/01-generator-spec.md §5–§6. The reschedule tests live in league-reschedule.pending.ts until L-007.
 // These are property tests: they hold for ANY correct implementation, so they do not pin one search order.
 import { describe, expect, it } from 'vitest';
 import { fingerprint } from '@/lib/league/fingerprint';
 import { roundRobin } from '@/lib/league/round-robin';
-import { generateSchedule, repair, reschedule, scoreSchedule } from '@/lib/league/schedule';
+import { generateSchedule, repair, scoreSchedule } from '@/lib/league/schedule';
 import { isPublishable, type Assignment, type ScheduleInput } from '@/lib/league/types';
 import { capstoneSlots, game, input, makeSlots, rules, teamIds } from './league-fixtures';
 
@@ -126,45 +126,10 @@ describe('repair', () => {
   });
 });
 
-describe('reschedule (rainout)', () => {
-  const rainDay = '2027-04-22';
-
-  it('moves only the rained-out games; every other game keeps its slot', () => {
-    const before = capstone();
-    const g = generateSchedule(before, { seed: 2027 });
-    const removedSlotIds = before.slots.filter((s) => s.day === rainDay).map((s) => s.id);
-    const makeup = makeSlots({ first: '2027-05-29', days: 1, weekdays: [6], starts: ['09:00', '10:30'], fields: ['F1', 'F2'] });
-    const after: ScheduleInput = { ...before, slots: [...before.slots.filter((s) => s.day !== rainDay), ...makeup] };
-    const displaced = Object.keys(g.assignment).filter((k) => removedSlotIds.includes(g.assignment[k]!));
-
-    const out = reschedule({ input: after, current: g.assignment, removedSlotIds, seed: 1 });
-
-    for (const key of Object.keys(g.assignment)) if (!displaced.includes(key)) expect(out.assignment[key]).toBe(g.assignment[key]);
-    expect(out.moved.map((m) => m.game).sort()).toEqual(displaced.filter((k) => !out.unplaced.includes(k)).sort());
-    expect(out.moved.length + out.unplaced.length).toBe(displaced.length);
-    for (const m of out.moved) {
-      expect(removedSlotIds).toContain(m.from);
-      expect(removedSlotIds).not.toContain(m.to);
-      expect(out.assignment[m.game]).toBe(m.to);
-    }
-    expect(out.report.hardCount).toBe(0);
-    expect(out.report).toEqual(scoreSchedule(after, out.assignment));
-  });
-
-  it('with no legal makeup slot a game is left unplaced, never double-booked', () => {
-    const games = [game(1, 'A', 'B'), game(1, 'C', 'D'), game(2, 'A', 'C'), game(2, 'B', 'D')];
-    const slots = makeSlots({ first: '2027-04-06', days: 3, weekdays: [2, 4], starts: ['18:00'], fields: ['F1', 'F2'] }); // 4 slots, all used
-    const current: Assignment = {
-      'L1:A~B': '2027-04-06|18:00|F1',
-      'L1:C~D': '2027-04-06|18:00|F2',
-      'L1:A~C': '2027-04-08|18:00|F1',
-      'L1:B~D': '2027-04-08|18:00|F2',
-    };
-    const removedSlotIds = ['2027-04-08|18:00|F1', '2027-04-08|18:00|F2'];
-    const out = reschedule({ input: input(games, slots.filter((s) => s.day !== '2027-04-08')), current, removedSlotIds, seed: 1 });
-    expect(out.unplaced).toEqual(['L1:A~C', 'L1:B~D']);
-    expect(out.moved).toEqual([]);
-    expect(out.report.hardCount).toBe(0);
-    expect(out.assignment).toEqual({ 'L1:A~B': '2027-04-06|18:00|F1', 'L1:C~D': '2027-04-06|18:00|F2' });
+describe('determinism beyond the seed (D-3)', () => {
+  it('the order of the input arrays does not change the schedule', () => {
+    const inp = capstone();
+    const reversed: ScheduleInput = { ...inp, games: [...inp.games].reverse(), slots: [...inp.slots].reverse(), blackouts: [...inp.blackouts].reverse() };
+    expect(generateSchedule(reversed, { seed: 2027 }).fingerprint).toBe(generateSchedule(inp, { seed: 2027 }).fingerprint);
   });
 });

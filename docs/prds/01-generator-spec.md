@@ -134,7 +134,7 @@ Pinned games never move. A candidate is **accepted only when it is strictly bett
 
 The search order is free: choosing moves from the current violations rather than at random is allowed and encouraged. What is fixed is the acceptance rule, the bounds, the determinism, and that the result is scored by `scoreSchedule`.
 
-**Guarantees** (`league-generate.pending.ts`):
+**Guarantees** (`league-generate.test.ts`):
 
 1. `report` equals `scoreSchedule(input, assignment)` exactly; `fingerprint` equals `fingerprint(assignment)`.
 2. `report.hardCount` is 0 whenever generation starts from the greedy draft.

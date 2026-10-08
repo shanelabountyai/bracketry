@@ -1,6 +1,8 @@
 // L-005 (score), L-006 (greedy + repair), L-007 (reschedule).
-// Spec: docs/prds/01-generator-spec.md §4–§7. Pending suites: tests/unit/league-score.pending.ts, league-generate.pending.ts
+// Spec: docs/prds/01-generator-spec.md §4–§7. Suites: tests/unit/league-score.test.ts, league-generate.test.ts, league-reschedule.pending.ts
 import { dayDiff } from './days';
+import { fingerprint } from './fingerprint';
+import { mulberry32, randInt } from './prng';
 import {
   NotImplementedError,
   type Assignment,
@@ -167,14 +169,133 @@ export function scoreSchedule(input: ScheduleInput, assignment: Assignment): Sco
   return { hard, soft, hardCount: sum(hard), softCost: sum(soft), unplaced };
 }
 
-/** Greedy draft, then repair. */
-export function generateSchedule(_input: ScheduleInput, _opts: GenerateOptions): GenerationResult {
-  throw new NotImplementedError('generateSchedule');
+const bySlot = (a: Slot, b: Slot) => byString(a.day, b.day) || byString(a.start, b.start) || byString(a.field, b.field);
+
+/**
+ * Phase 1 (spec §5): pins first, then games in (round, key) order, each into the first free slot in
+ * (day, start, field) order that adds no hard violation. "Adds no hard violation" is scoreSchedule's answer (D-4).
+ */
+export function greedyDraft(input: ScheduleInput): Assignment {
+  const games = [...input.games].sort((a, b) => a.round - b.round || byString(a.key, b.key));
+  const slots = [...input.slots].sort(bySlot);
+  const assignment: Assignment = {};
+  for (const g of games) {
+    const pin = input.pinned?.[g.key];
+    if (pin !== undefined) assignment[g.key] = pin;
+  }
+  const taken = new Set(Object.values(assignment));
+  // Zero unless a pin is itself illegal; the draft never adds to it.
+  const hard = scoreSchedule(input, assignment).hardCount;
+  for (const g of games) {
+    if (assignment[g.key] !== undefined) continue;
+    for (const s of slots) {
+      if (taken.has(s.id)) continue;
+      assignment[g.key] = s.id;
+      if (scoreSchedule(input, assignment).hardCount <= hard) {
+        taken.add(s.id);
+        break;
+      }
+      delete assignment[g.key];
+    }
+  }
+  return assignment;
 }
 
-/** The repair loop alone, from any starting assignment (an imported or hand-edited schedule included). */
-export function repair(_input: ScheduleInput, _start: Assignment, _opts: GenerateOptions): GenerationResult {
-  throw new NotImplementedError('repair');
+/** Strictly better, in spec §5 order: fewer hard violations, then fewer unplaced games, then lower soft cost. */
+const better = (a: ScoreReport, b: ScoreReport): boolean =>
+  a.hardCount !== b.hardCount
+    ? a.hardCount < b.hardCount
+    : a.unplaced.length !== b.unplaced.length
+      ? a.unplaced.length < b.unplaced.length
+      : a.softCost < b.softCost;
+
+/** Greedy draft, then repair. `before` is the draft's score. */
+export function generateSchedule(input: ScheduleInput, opts: GenerateOptions): GenerationResult {
+  return repair(input, greedyDraft(input), opts);
+}
+
+/**
+ * The repair loop alone, from any starting assignment (an imported or hand-edited schedule included).
+ * A local search (D-2): it reports what it measured and never claims the result is the best possible (D-5).
+ * One iteration is one candidate, scored by scoreSchedule (D-4) and kept only when strictly better.
+ *
+ * Determinism (D-3): the seeded PRNG is the only source of choice, and every pool it indexes into is an
+ * array sorted before use. Sets are used for membership only. The stop conditions are counts, never a clock.
+ */
+export function repair(input: ScheduleInput, start: Assignment, opts: GenerateOptions): GenerationResult {
+  const rng = mulberry32(opts.seed);
+  const pick = <T>(xs: T[]): T => xs[randInt(rng, xs.length)]!;
+  const maxIterations = opts.maxIterations ?? 5000;
+  const patience = opts.patience ?? 1500;
+
+  // A pinned game is never a candidate and a pinned slot is never a target. That includes a pinned game
+  // that arrives off its pin or unplaced: it stays reported, the loop does not touch it.
+  const pinned = input.pinned ?? {};
+  const pinnedSlots = new Set(Object.values(pinned));
+  const movable = input.games.filter((g) => pinned[g.key] === undefined).sort((a, b) => byString(a.key, b.key));
+  const slots = input.slots.filter((s) => !pinnedSlots.has(s.id)).sort(bySlot);
+
+  let current: Assignment = { ...start };
+  const before = scoreSchedule(input, current);
+  let report = before;
+
+  const propose = (): Assignment | null => {
+    const placed = movable.filter((g) => current[g.key] !== undefined);
+    const waiting = movable.filter((g) => current[g.key] === undefined);
+    const used = new Set(Object.values(current));
+    const free = slots.filter((s) => !used.has(s.id));
+
+    // PLACE: an unplaced game into a slot; an occupant goes to a free slot, or to unplaced when none is free.
+    // Only half the iterations, so a season that cannot be completed still gets its soft cost worked on.
+    if (waiting.length > 0 && (placed.length === 0 || rng() < 0.5)) {
+      if (slots.length === 0) return null;
+      const game = pick(waiting);
+      const slot = pick(slots);
+      const next = { ...current, [game.key]: slot.id };
+      const occupant = placed.find((g) => current[g.key] === slot.id);
+      if (occupant && free.length > 0) next[occupant.key] = pick(free).id;
+      else if (occupant) delete next[occupant.key];
+      return next;
+    }
+    if (placed.length === 0) return null;
+
+    // Focus: 80% a game the current report blames (hard first, then soft), 20% any movable game.
+    // An equity violation names teams and no games, so it blames every game of those teams.
+    const violations: Violation[] = report.hard.length > 0 ? report.hard : report.soft;
+    const blamedKeys = new Set(violations.flatMap((v) => v.games));
+    const blamedTeams = new Set(violations.filter((v) => v.games.length === 0).flatMap((v) => v.teams));
+    const blamed = placed.filter((g) => blamedKeys.has(g.key) || blamedTeams.has(g.home) || blamedTeams.has(g.away));
+    const game = blamed.length > 0 && rng() < 0.8 ? pick(blamed) : pick(placed);
+
+    // MOVE to a free slot, or SWAP with another placed game.
+    const others = placed.filter((g) => g !== game);
+    if (free.length > 0 && (others.length === 0 || rng() < 0.5)) return { ...current, [game.key]: pick(free).id };
+    if (others.length === 0) return null;
+    const other = pick(others);
+    return { ...current, [game.key]: current[other.key]!, [other.key]: current[game.key]! };
+  };
+
+  let iterations = 0;
+  let accepted = 0;
+  let stale = 0;
+  while (iterations < maxIterations && stale < patience && (report.hardCount > 0 || report.unplaced.length > 0 || report.softCost > 0)) {
+    const candidate = propose();
+    if (!candidate) break;
+    iterations++;
+    // ponytail: a full re-score per candidate (spec §8 measured it as fast enough for the D-17 caps); an incremental scorer if a real run nears 5 s.
+    const score = scoreSchedule(input, candidate);
+    if (better(score, report)) {
+      current = candidate;
+      report = score;
+      accepted++;
+      stale = 0;
+    } else {
+      stale++;
+    }
+  }
+
+  const assignment: Assignment = Object.fromEntries(Object.entries(current).sort((a, b) => byString(a[0], b[0])));
+  return { assignment, report, before, iterations, accepted, seed: opts.seed, fingerprint: fingerprint(assignment) };
 }
 
 /** Rainout: move only the displaced games. Everything else stays exactly where it was. */
