@@ -1,11 +1,13 @@
 // Per pending suite: how many tests fail with NotImplementedError vs any other way (D-20).
 import { spawnSync } from 'node:child_process';
-import { readFileSync, mkdtempSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const out = join(mkdtempSync(join(tmpdir(), 'pending-')), 'r.json');
 spawnSync('npx', ['vitest', 'run', '-c', 'vitest.pending.config.ts', '--reporter=json', `--outputFile=${out}`], { stdio: 'ignore' });
+// Vitest writes no report when the include pattern matches no file: every suite has been renamed.
+if (!existsSync(out)) { console.log('pending:check: no report written, no pending suites left'); process.exit(0); }
 const report = JSON.parse(readFileSync(out, 'utf8'));
 
 let total = 0, notImpl = 0, other = 0;
