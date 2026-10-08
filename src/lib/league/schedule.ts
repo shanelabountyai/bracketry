@@ -1,10 +1,9 @@
 // L-005 (score), L-006 (greedy + repair), L-007 (reschedule).
-// Spec: docs/prds/01-generator-spec.md §4–§7. Suites: tests/unit/league-score.test.ts, league-generate.test.ts, league-reschedule.pending.ts
+// Spec: docs/prds/01-generator-spec.md §4–§7. Suites: tests/unit/league-score.test.ts, league-generate.test.ts, league-reschedule.test.ts
 import { dayDiff } from './days';
 import { fingerprint } from './fingerprint';
 import { mulberry32, randInt } from './prng';
 import {
-  NotImplementedError,
   type Assignment,
   type Game,
   type GenerateOptions,
@@ -298,7 +297,49 @@ export function repair(input: ScheduleInput, start: Assignment, opts: GenerateOp
   return { assignment, report, before, iterations, accepted, seed: opts.seed, fingerprint: fingerprint(assignment) };
 }
 
-/** Rainout: move only the displaced games. Everything else stays exactly where it was. */
-export function reschedule(_req: RescheduleRequest): RescheduleResult {
-  throw new NotImplementedError('reschedule');
+/**
+ * Rainout (spec §7): move only the displaced games. Everything else stays exactly where it was (D-12).
+ * Each displaced game, in order of its old slot, goes to the free slot that adds no hard violation and
+ * gives the lowest soft cost, earliest slot on a tie; both answers are scoreSchedule's (D-4). With no such
+ * slot it is unplaced (D-9). A greedy pass, one game at a time: it does not claim the best joint placement (D-5).
+ *
+ * `req.seed` is not read: spec §7 describes no random choice, so the result is a function of the other inputs.
+ * The old slots are gone from the inventory, so "order of old slot" is the order of their ids (then game key).
+ * That is (day, start, field) order when ids are `day|start|field`.
+ */
+export function reschedule(req: RescheduleRequest): RescheduleResult {
+  const { input, current } = req;
+  const removed = new Set(req.removedSlotIds);
+  const inventory = new Set(input.slots.map((s) => s.id));
+  const displaced = input.games
+    .filter((g) => current[g.key] !== undefined && (removed.has(current[g.key]!) || !inventory.has(current[g.key]!)))
+    .sort((a, b) => byString(current[a.key]!, current[b.key]!) || byString(a.key, b.key));
+
+  const assignment: Assignment = { ...current };
+  for (const g of displaced) delete assignment[g.key];
+  const taken = new Set(Object.values(assignment));
+  const slots = input.slots.filter((s) => !removed.has(s.id)).sort(bySlot);
+  // Whatever the games that stay already score; a makeup placement never adds to it.
+  const hard = scoreSchedule(input, assignment).hardCount;
+
+  const moved: RescheduleResult['moved'] = [];
+  const unplaced: string[] = [];
+  for (const g of displaced) {
+    let best: { slot: Slot; cost: number } | undefined;
+    for (const slot of slots) {
+      if (taken.has(slot.id)) continue;
+      const score = scoreSchedule(input, { ...assignment, [g.key]: slot.id });
+      if (score.hardCount <= hard && (!best || score.softCost < best.cost)) best = { slot, cost: score.softCost };
+    }
+    if (!best) {
+      unplaced.push(g.key);
+      continue;
+    }
+    assignment[g.key] = best.slot.id;
+    taken.add(best.slot.id);
+    moved.push({ game: g.key, from: current[g.key]!, to: best.slot.id });
+  }
+
+  const sorted: Assignment = Object.fromEntries(Object.entries(assignment).sort((a, b) => byString(a[0], b[0])));
+  return { assignment: sorted, moved, unplaced, report: scoreSchedule(input, sorted) };
 }

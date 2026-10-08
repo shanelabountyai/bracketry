@@ -1,4 +1,4 @@
-// L-006 generate + repair. Spec: docs/prds/01-generator-spec.md §5–§6. The reschedule tests live in league-reschedule.pending.ts until L-007.
+// L-006 generate + repair. Spec: docs/prds/01-generator-spec.md §5–§6. The reschedule tests are in league-reschedule.test.ts.
 // These are property tests: they hold for ANY correct implementation, so they do not pin one search order.
 import { describe, expect, it } from 'vitest';
 import { fingerprint } from '@/lib/league/fingerprint';

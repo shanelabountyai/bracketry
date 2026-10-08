@@ -1,5 +1,4 @@
-// PENDING in the starter: rename to .test.ts when the item starts (L-007 reschedule). Spec: docs/prds/01-generator-spec.md §7.
-// Split out of league-generate at L-006 so that suite can go green while reschedule is still a stub (D-20).
+// L-007 reschedule. Spec: docs/prds/01-generator-spec.md §7.
 import { describe, expect, it } from 'vitest';
 import { roundRobin } from '@/lib/league/round-robin';
 import { generateSchedule, reschedule, scoreSchedule } from '@/lib/league/schedule';
@@ -59,5 +58,22 @@ describe('reschedule (rainout)', () => {
     expect(out.moved).toEqual([]);
     expect(out.report.hardCount).toBe(0);
     expect(out.assignment).toEqual({ 'L1:A~B': '2027-04-06|18:00|F1', 'L1:C~D': '2027-04-06|18:00|F2' });
+  });
+
+  it('takes the legal slot with the lowest soft cost, the earliest on a tie, whatever the seed', () => {
+    // A plays Tue Apr 6; A~C is rained out of Thu Apr 8. Wed Apr 7 is earliest but costs REST 10 (1 day, minimum 2).
+    // Fri Apr 9 costs 0 on either field, so the tie goes to F1. Equity is switched off to keep the count to REST.
+    const slot = (day: string, field: string) => makeSlots({ first: day, days: 1, weekdays: [0, 1, 2, 3, 4, 5, 6], starts: ['18:00'], fields: [field] });
+    const after = input(
+      [game(1, 'A', 'B'), game(2, 'A', 'C')],
+      [...slot('2027-04-09', 'F2'), ...slot('2027-04-09', 'F1'), ...slot('2027-04-07', 'F1'), ...slot('2027-04-06', 'F1')],
+      { rules: rules({ weights: { rest: 10, longGap: 3, slotEquity: 0, fieldEquity: 0, rematch: 5 } }) },
+    );
+    const req = { input: after, current: { 'L1:A~B': '2027-04-06|18:00|F1', 'L1:A~C': '2027-04-08|18:00|F1' }, removedSlotIds: ['2027-04-08|18:00|F1'] };
+    const out = reschedule({ ...req, seed: 1 });
+    expect(out.moved).toEqual([{ game: 'L1:A~C', from: '2027-04-08|18:00|F1', to: '2027-04-09|18:00|F1' }]);
+    expect(out.unplaced).toEqual([]);
+    expect(out.report.softCost).toBe(0);
+    expect(reschedule({ ...req, seed: 2 })).toEqual(out);
   });
 });
