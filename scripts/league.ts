@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { checkFeasibility } from '@/lib/league/feasibility';
 import { roundRobin } from '@/lib/league/round-robin';
 import type { ScheduleInput } from '@/lib/league/types';
+import { capstone } from './league-capstone';
 
 const flag = (args: string[], name: string) => args[args.indexOf(`--${name}`) + 1];
 
@@ -25,6 +26,12 @@ const commands: Record<string, ((args: string[]) => void) | undefined> = {
     console.log(`${f.gamesNeeded} games, ${f.slotsAvailable} slots, room for ${f.effectiveCapacity} once teams, blackouts and daily limits are counted.`);
     if (f.feasible) console.log('No necessary condition fails: these inputs could fit. The generator may still leave games unplaced.');
     else for (const s of f.shortfalls) console.log(`- ${s.code}: ${s.detail}`);
+  },
+  // league capstone [--seed 2027]
+  capstone(args) {
+    const seed = args.includes('--seed') ? Number(flag(args, 'seed')) : 2027;
+    if (!Number.isInteger(seed)) throw new Error('Usage: league capstone [--seed N]');
+    console.log(capstone(seed));
   },
 };
 

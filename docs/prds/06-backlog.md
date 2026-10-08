@@ -25,7 +25,7 @@ One item per session, top to bottom. ✅ built and committed, ⬜ not started (`
 | 8 | ✅ L-007 | `reschedule`: displaced games only, best legal makeup slot, unplaced when none | RAIN-02, RAIN-03; D-12; spec 01 §7 | M | Opus | L-006 |
 | 9 | ✅ L-008 | `computeStandings`: tally, cap, forfeits, chain with scopes, balanced check, restart and continue, shared ranks, manual resolutions, reasons. ST-1 to ST-9 | STAND-01 to STAND-06; D-13, D-14; spec 02 §1–§4 | M | Opus | L-002 |
 | 10 | ✅ L-009 | `seedOrder`, `buildBracket`, `recordResult`, `champion` | BRKT-02, BRKT-05; D-15; spec 02 §5–§7 | M | Sonnet | L-002 |
-| 11 | ⬜ L-010 | **Engine capstone.** `npm run league -- capstone --seed 2027`: build the 9-team season, check feasibility, generate, print the report with the floor; simulate every result from the seed with a forced three-way tie; print standings with reasons; build the bracket for the top 6; play it out; print the champion. Then rain out one day and print what moved. One integration test asserts the whole run is identical on a second call | PRD §9 | M | Sonnet | L-007, L-008, L-009 |
+| 11 | ✅ L-010 | **Engine capstone.** `npm run league -- capstone --seed 2027`: build the 9-team season, check feasibility, generate, print the report with the floor; simulate every result from the seed with a forced three-way tie; print standings with reasons; build the bracket for the top 6; play it out; print the champion. Then rain out one day and print what moved. One integration test asserts the whole run is identical on a second call | PRD §9 | M | Sonnet | L-007, L-008, L-009 |
 
 ## Milestone 2: The commissioner app
 
