@@ -1,3 +1,13 @@
+## L-022: closure (2026-10-12)
+
+**Built.** No product code. `WRITEUP.md` finished (summary, what it is not, defects found, hardest bug, what is open). `docs/RELEASE_NOTES.md` with every closure artifact. The exec brief, "Bracketry in Brief", published as a private artifact with two screenshots taken from the seeded demo on the dev server (standings with the reason column; the quality page stating the floor). Two LinkedIn drafts in the Ledger, posts 114 (Impact, "never optimal") and 115 (AI, "no coin flip"), after 113 (AI), so no two adjacent drafts share a pillar. The cost review.
+
+**Decided.** D-36: not deployed. D-37: nothing bills except CI minutes; the template's hourly cron is inert, with the schedule to change first if the project is ever deployed.
+
+**Measured.** Gate re-run for the brief's numbers, not quoted from the docs: lint 0 errors, typecheck clean, 383 tests across 52 files, `foundation:drift` clean against v1.2.0. Seed on 2026-10-12: 51 games in 56 slots, 301 to 122, 4,060 iterations, 29 accepted, Comets, Hawks and Icemen level; the same as L-021. Vercel: no project. Neon: 0 of 19 projects named bracketry.
+
+**Left behind.** The brief links the build log artifact in its footer; that link is dead for a reader until both pages are shared. The Ledger page has no `bracketry` entry in its project list, so the tag shows as the raw id and there is no filter chip (same as `loanbook`). The screenshots are hand-taken, not from a capture spec, and the screens are unstyled. The 138 in the brief is the L-002 count of tests written before their code; later suites added tests. P1 items L-023 to L-026 are not started. Everything listed under "Open" in `NEXT.md` stands.
+
 ## L-021: demo data and e2e (2026-10-12)
 
 **Built.** `scripts/seed-bracketry.ts` (`npm run seed:bracketry`, and `:test`): the Eastside Rec Softball org, a commissioner who signs in at `/demo`, one season of seven weeks with A Division (the capstone's nine teams) and B Division (six), two fields, Tuesday and Thursday at 18:00 and 19:30, three blackouts and minimum rest 3. It calls `loadSeasonInput`, `generateSchedule` and `saveDraft`, the same three the Generate button calls, publishes the version, and writes a score for every game before today. Re-running replaces the league. `docs/DEMO.md`: the script, screen by screen, with accounts, troubleshooting and what to concede. `e2e/golden-path.spec.ts`: one spec, as the commissioner, through the forms: published version, Quality page, the tied teams in three consecutive ranks, makeup slots, a top-4 bracket placed and played to a champion, then a rained-out day, a proposed reschedule, the version comparison and a publish.

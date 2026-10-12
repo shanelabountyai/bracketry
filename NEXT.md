@@ -1,10 +1,10 @@
 # NEXT
 
-PICK UP HERE: L-022, closure (**Sonnet** per the backlog): finish `WRITEUP.md`, the executive write-up (`exec-brief` skill), deploy or decide not to (the port table says "Not deployed (sample project)"), build-log links. The global definition of done applies: `docs/DEMO.md` exists (L-021); still owed are the exec brief, the LinkedIn drafts in the Ledger, and the cost review. Record every artifact URL in the repo.
+The P0 backlog is done and the project is closed (L-022, 2026-10-12). Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
 
-Done at L-021: `scripts/seed-bracketry.ts` (`npm run seed:bracketry`), `docs/DEMO.md`, `e2e/golden-path.spec.ts`. D-35 records the rules.
+PICK UP HERE, only if the project is reopened: L-023, what-if standings and clinched/eliminated flags with the 12-game enumeration limit (WHATIF-01, WHATIF-02; M; depends on L-016). It is engine logic, so **Opus**. L-024 to L-026 follow in `docs/prds/06-backlog.md`; L-025 needs the owner's go-ahead (OQ-2).
 
-Needs the owner: D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out, at `/l/<org>/<season id>`. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time. Say if you would rather commit it.
+Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The two LinkedIn drafts (Ledger 114 and 115) were drafted without a review pass by the owner. The Ledger's project list has no `bracketry` entry. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
 Open from L-016: no editor for points, run-diff cap or forfeit settings (STAND-02).
 

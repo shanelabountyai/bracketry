@@ -1,6 +1,49 @@
 # Bracketry write-up
 
-Working notes, filled in per item and finished at L-022.
+Finished at L-022 (2026-10-12). The sections below are the summary; the per-item notes after them are the record they were drawn from. Closure artifacts are listed in `docs/RELEASE_NOTES.md`.
+
+## What it is
+
+A rec-league scheduler built from 2026-10-06 to 2026-10-12 on `saas-foundation` v1.2.0. The software writes a season under constraints, ranks teams through a tiebreak chain, seeds and plays a single-elimination bracket, and reschedules a rained-out day. The engine in `src/lib/league/` is pure and deterministic under a seed; the app loads rows, calls it, and stores what it returns.
+
+## What it is not
+
+- **Not optimal, and it never says so (D-5).** A greedy draft and a seeded local search, no solver library (D-2). On the nine-team capstone the search finishes at 114 at seed 2027 against a floor of 100 shown by counting; seeds 1, 2 and 3 finish at 110, 102 and 120. None reaches the floor, and the floor counts the rest rule only.
+- **Synthetic data, not deployed (D-36).** Eastside Rec Softball is invented and the three-way tie is staged. Nothing bills except CI minutes (D-37).
+- **Unstyled.** The screens are plain HTML with no design pass.
+- **Not built:** umpires, rosters, registration, payments, live scoring, double elimination, coach accounts, a scorekeeper role (D-30), an editor for points and forfeit settings. Notices are queued, not sent.
+- **Desk research.** No commissioner has reviewed the rules or the defaults.
+
+## Measured at closure
+
+Gate on 2026-10-12: lint 0 errors (1 warning, the template's), typecheck clean, 383 tests across 52 files, `foundation:drift` clean against v1.2.0. 35 decisions were logged during the build (D-1 to D-35); D-36 and D-37 are closure. 18 of 18 constraint tests write a conflicting row with raw SQL and name the constraint that refused it. The demo season: 51 games in 56 slots, soft cost 301 before repair and 122 after, 4,060 iterations, 29 accepted moves, floor 100.
+
+## Defects found
+
+Each was found by running something larger than a unit test, and each is in the per-item notes with its numbers.
+
+| Found at | Defect | How it was found | Fix |
+|---|---|---|---|
+| L-010 | A rainout on Thu Apr 15 moved a game to Tue Apr 13, two days before the rain. | Reading the output of the first end-to-end capstone run. | The engine has no clock by design, so the caller keeps past open slots out of the inventory (D-23); the app never offers a slot on or before today. |
+| L-017 | A draft made before a slot was closed or a score entered could still be published. | Writing the rainout action and asking what a stale draft does. | Publish refuses a draft with an unplayed game in a closed slot or a moved game that has since been scored (D-31). |
+| L-021 | The demo league gave 133 on one run and 122 on the next at the same seed. | Running the seed three times. | Team, division and field ids were random and the engine sorts by id; the seed now uses fixed ids (D-35). |
+| L-018 | The template's invariant sweep timed out at 180 s after four new actions. | The gate. | Two missing fixture rows; with them the sweep takes 11 s. Why it showed as a timeout and not as the harness's own "no fixture row" finding was not established. |
+| L-019 | A new integration test was red and the test was wrong. | The gate. | With one game scored, second place was a three-way tie, so `generateBracket` was right to refuse the top 2. The test was fixed, not the code. |
+| L-009 | `pending:check` crashed once no pending suites were left. | Running it after the last suite went green. | It now says so and exits 0. |
+
+## Hardest bug
+
+The rainout into the past (L-010). Every reschedule test passed: the right games moved, no other game moved, the chosen slot broke no rule and cost least. None asked whether the chosen day had already happened, because the engine is forbidden a clock (D-3) and the spec for `reschedule` did not say who keeps the past out. It appeared only when one command ran the whole season as a story and the output read "moved to Tue Apr 13" under a rainout dated Thu Apr 15. Nothing in `src/lib/league` changed. The fix was to name the owner of time: the caller filters the inventory, and the app applies the same rule in the season's timezone. The lesson kept: when a component is made simple by leaving something out, the thing left out needs a named owner, and an end-to-end run is what finds the gap.
+
+The unexplained one is smaller and still open: the first full `npm test` after the L-011 migration took 369 s and the second 29 s, with no memory pressure, no lock cancellations in the Postgres log, and a TRUNCATE that timed at 25 ms. The cause is unknown and it has not recurred.
+
+## What is open
+
+P1 items L-023 to L-026 are not started. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
+
+## Per-item notes
+
+- **L-022:** closure added no product code. The exec brief leads with what the project is not, takes its numbers from a fresh gate run rather than from these notes, and shows the unstyled screens as they are.
 
 - **L-002:** guard rails make the engine's purity (D-3) a lint error rather than a convention, and `pending:check` makes "red for the right reason" (D-20) a number: 133 of 138 pending tests fail with NotImplementedError, 5 fail on their assertion.
 - **L-004:** feasibility reports necessary conditions only and says so: a pass reads "these inputs could fit", and each shortfall is a sentence with its numbers (9 teams over 4 weeks: 36 games, 32 slots, 4 short).
