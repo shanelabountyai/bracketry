@@ -39,7 +39,7 @@ The unexplained one is smaller and still open: the first full `npm test` after t
 
 ## What is open
 
-P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) was built after closure; L-024 to L-026 are not started. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
+P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) and L-024 (a calendar feed per team) were built after closure; L-025 and L-026 are not started. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
 
 ## Per-item notes
 
@@ -67,3 +67,5 @@ P1: L-023 (what-if standings, clinched and eliminated on points by enumeration u
 - **L-021:** the demo league and the browser test. One command builds Eastside Rec Softball in mid-season: two divisions, 51 games in 56 slots, a published schedule (301 down to 122 against a floor of 100), a score for every game before today and three teams level on points. The season is dated around the day the command runs, because the app only takes scores for past days and only moves future games. The first version gave a different schedule each run with the same seed: team ids were random and the engine sorts by them. Fixed ids made it repeat. One browser test then walks the whole path as the commissioner: the tie resolved in words, a bracket played to a champion, and a rained-out day where the comparison screen lists exactly the displaced games and nothing else. It was the first time the rainout, playoff and quality screens ran in a browser, and none needed a fix.
 
 **L-023, what-if and clinch.** Clinched and eliminated come from trying every outcome of the games left, three per game, and only on points: 531,441 outcomes at the 12-game limit, about 0.4 s for nine teams. Above 12 the page says so and shows nothing. The flags are deliberately conservative: level on points counts against a team for clinching and for it for elimination, so a tiebreaker never makes a claim the enumeration did not check. The cut line is asked on the page because the season does not store how many teams qualify (D-38).
+
+**L-024, calendar feed.** Each team has a calendar address a coach can subscribe to. It is the public page's own data in another format: game times are written as the league's local times with the zone named beside them, so nothing converts a time and nothing can be an hour out. A game keeps the same identity when it is rescheduled, so it moves in the calendar instead of showing twice. It was checked by tests reading the file, not in a calendar app (D-39).

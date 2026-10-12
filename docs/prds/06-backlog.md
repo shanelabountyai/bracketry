@@ -54,6 +54,6 @@ One item per session, top to bottom. ✅ built and committed, ⬜ not started (`
 | # | ID | Item | Stories | Size | Depends on |
 |---|---|---|---|---|---|
 | 24 | ✅ L-023 | What-if standings and clinched/eliminated flags with the 12-game enumeration limit | WHATIF-01, WHATIF-02 | M | L-016 |
-| 25 | ⬜ L-024 | Calendar feed per team | ICAL-01 | S | L-019 |
+| 25 | ✅ L-024 | Calendar feed per team | ICAL-01 | S | L-019 |
 | 26 | ⬜ L-025 | LLM-against-generator benchmark, scored by `scoreSchedule`, with cost and time. Needs the owner's go-ahead (OQ-2) | BENCH-01 | M | L-010 |
 | 27 | ⬜ L-026 | Crossover games between divisions | DBL-01 | M | L-013 |

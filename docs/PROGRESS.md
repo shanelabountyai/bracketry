@@ -1,3 +1,13 @@
+## L-024: calendar feed per team (2026-10-12)
+
+**Built.** `teamCalendar(league, team)` in `src/app/l/public-league.ts` turns one team's games from `loadPublicLeague` into an iCalendar file, and `src/app/l/[org]/[season]/calendar.ics/route.ts` serves it at `?team=<name>` as `text/calendar` (ICAL-01). The public page shows a "Calendar feed" link once a team is picked. `PublicLeague` gained `timezone`, `gameMinutes` and `publishedAt`, and `PublicGame` gained `uid`, a hash of the game id. No engine change and no migration.
+
+**Decided.** D-39, defaults where the PRD is silent: the URL and the team-by-name pick follow the page; regular-season games only; wall times with the season's `TZID` and no `VTIMEZONE` block; the event key is a hash of the game id and survives a reschedule; no scores in the feed.
+
+**Measured.** Gate: lint 0 errors (1 warning, the template's), typecheck clean, 389 tests across 52 files (2 new, in `tests/integration/public-league.test.ts`), `foundation:drift` clean against v1.2.0. `e2e/public-league.spec.ts`: 2 passed in 8.2 s against the production build, now fetching the feed and adding its URL to the 404 list. The first full `npm test` was red on the template's INV-01..04 sweep (timed out at 180 s, then two controls failed behind it). The same file alone passed in 12 s and the second full run was green in 46 s with nothing changed; the cause was not established.
+
+**Left behind.** The feed was not opened in a calendar app: Google, Apple and Outlook are expected to accept a `TZID` with no `VTIMEZONE`, and that was not tried. Lines fold at 73 characters, not 75 bytes, so a long non-ASCII team name can run over. Playoff games are not in the feed. A feed read costs what a page read costs (standings and brackets are computed and thrown away) and draws on the same 60 reads per 15 minutes per IP, which a calendar service polling for many subscribers from one address could use up. A renamed team breaks its subscribers' URL.
+
 ## L-022: closure (2026-10-12)
 
 **Built.** No product code. `WRITEUP.md` finished (summary, what it is not, defects found, hardest bug, what is open). `docs/RELEASE_NOTES.md` with every closure artifact. The exec brief, "Bracketry in Brief", published as a private artifact with two screenshots taken from the seeded demo on the dev server (standings with the reason column; the quality page stating the floor). Two LinkedIn drafts in the Ledger, posts 114 (Impact, "never optimal") and 115 (AI, "no coin flip"), after 113 (AI), so no two adjacent drafts share a pillar. The cost review.

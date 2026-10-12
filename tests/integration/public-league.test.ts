@@ -4,7 +4,7 @@ import { db } from '@/core/db';
 import { generateBracket } from '@/app/o/[org]/seasons/bracket-actions';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
-import { blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
+import { blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, teamCalendar, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
 
@@ -53,7 +53,7 @@ describe('the projections are allowlists (PUB-03, spec §7c)', () => {
   const team = (name: string) => ({ name, ...leak });
 
   it('a game: a contact field or a new column on any row stays out', () => {
-    const row = { ...leak, fieldSlot: slot, game: { ...leak, division: team('Open'), homeTeam: team('A'), awayTeam: team('B'), results: [{ homeRuns: 3, awayRuns: 1, forfeit: null, reason: 'umpire', enteredBy: 'x' }] } };
+    const row = { ...leak, gameId: 'g1', fieldSlot: slot, game: { ...leak, division: team('Open'), homeTeam: team('A'), awayTeam: team('B'), results: [{ homeRuns: 3, awayRuns: 1, forfeit: null, reason: 'umpire', enteredBy: 'x' }] } };
     const out = toPublicGame(row, slot);
     expect(Object.keys(out)).toEqual(Object.keys(blankPublicGame()));
     expect(JSON.stringify(out)).not.toMatch(/leak|coach|umpire/);
@@ -128,3 +128,34 @@ describe('loadPublicLeague', () => {
     expect(after.games.find((g) => g.home === home && g.day === to.day)).toBeTruthy(); // still in its new slot
   });
 });
+
+describe('teamCalendar (ICAL-01)', () => {
+  it("lists one team's games as wall times in the season's zone, and keeps a game's UID when it moves", async () => {
+    await publishFirst();
+    const league = await load();
+    const ics = teamCalendar(league, 'T0')!;
+    expect(ics).not.toMatch(SECRET);
+    expect(ics.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n')).toBe(true);
+    expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true);
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(3); // four teams, one leg: three games each
+    const mine = league.games.filter((g) => g.home === 'T0' || g.away === 'T0');
+    for (const g of mine) expect(ics).toContain(`DTSTART;TZID=America/Chicago:${g.day.replaceAll('-', '')}T${g.start.replace(':', '')}00\r\nDURATION:PT60M\r\nSUMMARY:${g.home} v ${g.away}\r\nLOCATION:F1`);
+    expect(teamCalendar(league, 'Nobody')).toBeNull();
+
+    const uids = (text: string) => [...text.matchAll(/UID:(\S+)/g)].map((m) => m[1]).sort();
+    const { home, to } = await publishWithOneMove();
+    const after = teamCalendar(await load(), home)!;
+    expect(uids(after)).toEqual(uids(teamCalendar(league, home)!));
+    expect(after).toContain(`:${to.day.replaceAll('-', '')}T${to.start.replace(':', '')}00`);
+  });
+
+  it('escapes text and folds long lines', () => {
+    const game = { ...blankPublicGame(), uid: 'u', day: '2026-10-06', start: '18:00', field: 'North; Diamond, 2', division: 'Open', home: 'A'.repeat(60), away: 'B'.repeat(60) };
+    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], bracket: null, champion: null }] }, game.home)!;
+    expect(ics).toContain('LOCATION:North\\; Diamond\\, 2\r\n');
+    expect(ics).toContain('DTSTAMP:20261001T120000Z\r\nDTSTART;TZID=America/Chicago:20261006T180000\r\nDURATION:PT75M\r\n');
+    expect(ics.split('\r\n').every((l) => l.length <= 74)).toBe(true);
+    expect(ics.replaceAll('\r\n ', '')).toContain(`SUMMARY:${game.home} v ${game.away}\r\n`);
+  });
+});
+

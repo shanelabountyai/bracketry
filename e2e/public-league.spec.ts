@@ -49,11 +49,19 @@ test('anyone can read the published schedule, standings and score; no contact de
   await page.getByRole('link', { name: 'Otters' }).click();
   await expect(page.getByRole('heading', { name: 'Schedule: Otters' })).toBeVisible();
   await expect(page.getByText('Herons v Otters')).toBeVisible();
+
+  // L-024 (ICAL-01): the team's feed, linked from its schedule
+  const href = await page.getByRole('link', { name: 'Calendar feed for Otters (.ics)' }).getAttribute('href');
+  const feed = await page.request.get(href!);
+  expect(feed.headers()['content-type']).toBe('text/calendar; charset=utf-8');
+  const ics = await feed.text();
+  expect(ics).toContain('DTSTART;TZID=America/Chicago:20260407T180000\r\nDURATION:PT60M\r\nSUMMARY:Herons v Otters\r\nLOCATION:North Diamond');
+  expect(ics).not.toMatch(/coach-|example\.test/);
 });
 
 test('a season with only a draft, an unknown season and a malformed id are all the same 404', async ({ request }) => {
   const { slug, season } = await seedLeague('draft');
-  for (const path of [`/l/${slug}/${season}`, `/l/${slug}/${randomUUID()}`, `/l/${slug}/not-a-uuid`, `/l/nobody/${season}`]) {
+  for (const path of [`/l/${slug}/${season}`, `/l/${slug}/${season}/calendar.ics?team=Herons`, `/l/${slug}/${randomUUID()}`, `/l/${slug}/not-a-uuid`, `/l/nobody/${season}`]) {
     expect((await request.get(path)).status(), path).toBe(404);
   }
 });

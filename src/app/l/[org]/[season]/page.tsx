@@ -37,6 +37,7 @@ export default async function League({ params, searchParams }: { params: Promise
             <span key={t}> · {t === team ? <strong>{t}</strong> : <a href={`${base}?team=${encodeURIComponent(t)}`}>{t}</a>}</span>
           ))}
         </nav>
+        {team && <p><a href={`${base}/calendar.ics?team=${encodeURIComponent(team)}`}>Calendar feed for {team} (.ics)</a></p>}
         {days.length === 0 && <p>No games.</p>}
         {days.map((day) => (
           <div key={day}>

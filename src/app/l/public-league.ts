@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { now } from '@/core/clock';
 import { db } from '@/core/db';
 import { champion } from '@/lib/league/bracket';
@@ -9,6 +10,8 @@ import { loadBrackets } from '@/app/o/[org]/seasons/bracket-load';
 // later stays private until someone adds it here. Names only: no ids, no contact details, no audit data.
 
 export interface PublicGame {
+  /** A hash of the game's id: the same game keeps it across versions, so a calendar moves the event (ICAL-01). */
+  uid: string;
   day: string;
   start: string;
   field: string;
@@ -21,10 +24,11 @@ export interface PublicGame {
   /** The slot this game held in the version before, while the mark is shown (PUB-02). */
   movedFrom: string | null;
 }
-export const blankPublicGame = (): PublicGame => ({ day: '', start: '', field: '', division: '', home: '', away: '', homeRuns: null, awayRuns: null, forfeit: null, movedFrom: null });
+export const blankPublicGame = (): PublicGame => ({ uid: '', day: '', start: '', field: '', division: '', home: '', away: '', homeRuns: null, awayRuns: null, forfeit: null, movedFrom: null });
 
 interface SlotRow { day: string; start: string; field: { name: string } }
 interface PlacementRow {
+  gameId: string;
   fieldSlot: SlotRow;
   game: { division: { name: string }; homeTeam: { name: string }; awayTeam: { name: string }; results: { homeRuns: number; awayRuns: number; forfeit: 'home' | 'away' | null }[] };
 }
@@ -35,6 +39,7 @@ export function toPublicGame(p: PlacementRow, was: SlotRow | null): PublicGame {
   const r = p.game.results[0];
   return {
     ...blankPublicGame(),
+    uid: createHash('sha256').update(p.gameId).digest('hex').slice(0, 32),
     day: p.fieldSlot.day,
     start: p.fieldSlot.start,
     field: p.fieldSlot.field.name,
@@ -89,6 +94,10 @@ export function toPublicMatch(m: BracketMatch, slot: SlotRow | null, name: (team
 
 export interface PublicLeague {
   season: string;
+  /** IANA name; every day and start time below is a wall time in it (D-6). */
+  timezone: string;
+  gameMinutes: number;
+  publishedAt: Date;
   /** Regular-season games of the published version, in day, time and field order. */
   games: PublicGame[];
   divisions: { name: string; standings: PublicStanding[]; bracket: PublicMatch[] | null; champion: string | null }[];
@@ -137,6 +146,9 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
     .sort((a, b) => (order(a) < order(b) ? -1 : 1));
   return {
     season: s.season.name,
+    timezone: s.season.timezone,
+    gameMinutes: s.season.gameMinutes,
+    publishedAt: version.publishedAt ?? now(),
     games,
     divisions: s.byDivision.map(({ division, rows: table, name, bracket: b }) => {
       const won = b ? champion(b.bracket) : null;
@@ -148,4 +160,37 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
       };
     }),
   };
+}
+
+const icsText = (v: string) => v.replace(/[\\;,]/g, '\\$&').replace(/\r?\n/g, '\\n');
+
+/**
+ * One team's games of the published version as an iCalendar feed (ICAL-01), or null for a name that is
+ * not a team of this season. Times are the season's wall times with its TZID, so nothing here converts
+ * an instant (D-6). Regular-season games only, like the page's schedule list (D-33).
+ */
+export function teamCalendar(league: PublicLeague, team: string): string | null {
+  if (!league.divisions.some((d) => d.standings.some((r) => r.team === team))) return null;
+  const stamp = league.publishedAt.toISOString().replace(/[-:]|\.\d{3}/g, '');
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Bracketry//League schedule//EN',
+    `X-WR-CALNAME:${icsText(`${team} · ${league.season}`)}`,
+    ...league.games.filter((g) => g.home === team || g.away === team).flatMap((g) => [
+      'BEGIN:VEVENT',
+      `UID:${g.uid}@bracketry`,
+      `DTSTAMP:${stamp}`,
+      // ponytail: TZID with no VTIMEZONE block; Google, Apple and Outlook resolve IANA names. Add the block if a client shows UTC.
+      `DTSTART;TZID=${league.timezone}:${g.day.replaceAll('-', '')}T${g.start.replace(':', '')}00`,
+      `DURATION:PT${league.gameMinutes}M`,
+      `SUMMARY:${icsText(`${g.home} v ${g.away}`)}`,
+      `LOCATION:${icsText(g.field)}`,
+      `DESCRIPTION:${icsText(g.division)}`,
+      'END:VEVENT',
+    ]),
+    'END:VCALENDAR',
+  ];
+  // ponytail: folds at 73 characters, not 75 octets; a long non-ASCII name can run over. Count bytes if a client rejects one.
+  return lines.map((l) => l.replace(/(.{73})(?=.)/gu, '$1\r\n ')).join('\r\n') + '\r\n';
 }
