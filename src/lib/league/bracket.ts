@@ -80,6 +80,23 @@ export function recordResult(
   return next;
 }
 
+/** Removes a result and takes its winner back out of the next match (spec 02 §7). Refused while the next match has a result. */
+export function clearResult(bracket: Bracket, matchId: string): Bracket {
+  const next: Bracket = structuredClone(bracket);
+  const find = (id: string) => next.rounds.flat().find((m) => m.id === id);
+
+  const match = find(matchId);
+  if (!match?.result) throw new Error(`${matchId} has no result to clear`);
+  if (match.winnerTo) {
+    const target = find(match.winnerTo.matchId)!;
+    if (target.result) throw new Error(`${matchId} cannot be cleared: ${target.id} has been played. Clear that result first`);
+    target[match.winnerTo.side] = { kind: 'from', matchId };
+  }
+  delete match.result;
+  delete match.winner;
+  return next;
+}
+
 export function champion(bracket: Bracket): TeamId | null {
   return bracket.rounds.at(-1)?.[0]?.winner ?? null;
 }

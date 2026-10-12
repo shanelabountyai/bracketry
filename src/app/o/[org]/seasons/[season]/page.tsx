@@ -69,7 +69,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   return (
     <main>
       <h1>{season.name}</h1>
-      <p><a href={`/o/${ctx.slug}/seasons/${season.id}/standings`}>Standings</a></p>
+      <p><a href={`/o/${ctx.slug}/seasons/${season.id}/standings`}>Standings</a> · <a href={`/o/${ctx.slug}/seasons/${season.id}/bracket`}>Playoffs</a></p>
       <p>{season.firstDay} to {season.lastDay} · {season.timezone} · {season.gameMinutes}-minute games · {season.status}</p>
 
       <h2>Divisions and teams</h2>

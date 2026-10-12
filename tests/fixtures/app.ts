@@ -6,7 +6,7 @@ import { db } from '@/core/db';
 const id = (key: 'a' | 'b', n: number) => `00000000-0000-4000-9000-${key === 'a' ? '1' : '2'}${String(n).padStart(11, '0')}`;
 
 export async function seedApp(org: { orgId: string; userId: string }, key: 'a' | 'b'): Promise<Record<string, string>> {
-  const ids = { season: id(key, 1), division: id(key, 2), team: id(key, 3), field: id(key, 4), fieldSlot: id(key, 5), team2: id(key, 6), game: id(key, 7), scheduleVersion: id(key, 8) };
+  const ids = { season: id(key, 1), division: id(key, 2), team: id(key, 3), field: id(key, 4), fieldSlot: id(key, 5), team2: id(key, 6), game: id(key, 7), scheduleVersion: id(key, 8), bracket: id(key, 9), bracketGame: id(key, 10) };
   const base = { orgId: org.orgId };
   await db.season.create({
     data: { ...base, id: ids.season, name: `Season ${key}`, timezone: 'America/Chicago', firstDay: '2026-04-06', lastDay: '2026-06-26', gameMinutes: 90, rules: {}, standingsConfig: {} },
@@ -21,5 +21,8 @@ export async function seedApp(org: { orgId: string; userId: string }, key: 'a' |
   await db.scheduleVersion.create({
     data: { ...base, id: ids.scheduleVersion, seasonId: ids.season, number: 1, seed: 1n, inputHash: 'x', fingerprint: 'x', report: { hardCount: 1, softCost: 0, unplaced: [], hard: [], soft: [] }, iterations: 0, accepted: 0, createdBy: org.userId },
   });
+  // A two-team bracket with its one game unplayed, for the playoff actions' refs.
+  await db.bracket.create({ data: { ...base, id: ids.bracket, divisionId: ids.division, size: 2, seeding: { teams: [ids.team, ids.team2], standings: [] }, standingsFingerprint: 'x', createdBy: org.userId } });
+  await db.bracketGame.create({ data: { ...base, id: ids.bracketGame, bracketId: ids.bracket, matchId: 'R1M1', round: 1, index: 1, aTeamId: ids.team, bTeamId: ids.team2 } });
   return ids;
 }

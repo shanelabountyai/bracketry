@@ -1,6 +1,6 @@
 // PENDING in the starter: rename to .test.ts when the item starts (L-009). Spec: docs/prds/02-standings-bracket-spec.md §5–§7.
 import { describe, expect, it } from 'vitest';
-import { buildBracket, champion, recordResult, seedOrder } from '@/lib/league/bracket';
+import { buildBracket, champion, clearResult, recordResult, seedOrder } from '@/lib/league/bracket';
 import type { Bracket, BracketMatch, BracketSlot } from '@/lib/league/types';
 import { refuses } from './league-fixtures';
 
@@ -111,6 +111,22 @@ describe('recordResult', () => {
     b = win(b, 'R1M2', 'a');
     b = win(b, 'R2M1', 'a');
     expect(refuses(() => win(b, 'R1M1', 'a'))).toBe(true);
+  });
+  // Added at L-018: §7 says a later result "has to be cleared first", so clearing is the same rule read backwards.
+  it('clearing a result takes the winner back out of the next game, latest game first', () => {
+    const built = buildBracket(seeds(8));
+    let b = win(win(win(built, 'R1M1', 'b'), 'R1M2', 'a'), 'R2M1', 'a');
+    expect(refuses(() => clearResult(b, 'R1M1'))).toBe(true); // R2M1 has been played
+    b = clearResult(b, 'R2M1');
+    expect(match(b, 'R3M1').a).toEqual({ kind: 'from', matchId: 'R2M1' });
+    expect(match(b, 'R2M1').a).toMatchObject({ team: 'S8' }); // its own teams stay
+    b = clearResult(clearResult(b, 'R1M1'), 'R1M2');
+    expect(b).toEqual(built);
+  });
+  it('refuses to clear a game with no result: unplayed, a bye, or unknown', () => {
+    expect(refuses(() => clearResult(buildBracket(seeds(8)), 'R1M1'))).toBe(true);
+    expect(refuses(() => clearResult(buildBracket(seeds(6)), 'R1M1'))).toBe(true);
+    expect(refuses(() => clearResult(buildBracket(seeds(8)), 'R9M9'))).toBe(true);
   });
   it('a bye game cannot be given a result', () => {
     expect(refuses(() => win(buildBracket(seeds(6)), 'R1M1', 'a'))).toBe(true);

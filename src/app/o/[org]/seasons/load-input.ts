@@ -10,7 +10,8 @@ export async function loadSeasonInput(ctx: OrgCtx, seasonId: string) {
   const [divisions, teams, slotRows, blackouts, pins] = await Promise.all([
     db.division.findMany({ where: { seasonId, ...inOrg(ctx) }, orderBy: { name: 'asc' } }),
     db.team.findMany({ where: { seasonId, ...inOrg(ctx) }, select: { id: true, divisionId: true } }),
-    db.fieldSlot.findMany({ where: { seasonId, status: { in: ['open', 'makeup'] }, ...inOrg(ctx) } }),
+    // A slot that holds a playoff game is not season inventory (BRKT-04).
+    db.fieldSlot.findMany({ where: { seasonId, status: { in: ['open', 'makeup'] }, bracketGame: null, ...inOrg(ctx) } }),
     db.blackout.findMany({ where: { team: { seasonId }, ...inOrg(ctx) }, select: { teamId: true, day: true } }),
     db.pin.findMany({ where: { seasonId, ...inOrg(ctx) }, select: { game: { select: { key: true } }, fieldSlot: { select: { day: true, start: true, fieldId: true } } } }),
   ]);
