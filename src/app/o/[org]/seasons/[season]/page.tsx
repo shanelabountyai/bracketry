@@ -10,6 +10,7 @@ import { compareAssignments } from '@/lib/league/compare';
 import { DEFAULT_RULES, isPublishable, type Rules, type ScoreReport } from '@/lib/league/types';
 import { generate } from '../generate-actions';
 import { loadSeasonInput } from '../load-input';
+import { recordResult } from '../result-actions';
 import { publish, removePin, setPin } from '../version-actions';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setSlotOpen } from '../actions';
 
@@ -40,6 +41,12 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
     db.pin.findMany({ where: { seasonId: season.id, ...inOrg(ctx) } }),
     db.user.findMany({ where: { id: { in: [...new Set(versions.map((v) => v.createdBy))] } }, select: { id: true, name: true, email: true } }),
   ]);
+  const published = versions.find((v) => v.status === 'published');
+  const [scored, results] = await Promise.all([
+    published ? db.placement.findMany({ where: { scheduleVersionId: published.id, ...inOrg(ctx) }, select: { gameId: true, fieldSlotId: true } }) : [],
+    db.gameResult.findMany({ where: { game: { seasonId: season.id }, ...inOrg(ctx) }, orderBy: { enteredAt: 'asc' } }),
+  ]);
+  const resultAuthors = await db.user.findMany({ where: { id: { in: [...new Set(results.map((r) => r.enteredBy))] } }, select: { id: true, name: true, email: true } });
   const sp = await searchParams;
   const [va, vb] = [versions.find((v) => String(v.number) === sp.a), versions.find((v) => String(v.number) === sp.b)];
   const placed = async (versionId: string) => Object.fromEntries((await db.placement.findMany({ where: { scheduleVersionId: versionId, ...inOrg(ctx) }, select: { fieldSlotId: true, game: { select: { key: true } } } })).map((p) => [p.game.key, p.fieldSlotId]));
@@ -50,7 +57,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '?';
   const slotLabel = (id: string | null) => { const x = slots.find((s) => s.id === id); return x ? `${x.day} ${x.start} · ${fieldName(x.fieldId)}` : 'not placed'; };
   const gameLabel = (key: string) => { const g = games.find((x) => x.key === key); return g ? `${teamName(g.homeTeamId)} v ${teamName(g.awayTeamId)}` : key; };
-  const author = (id: string) => { const u = authors.find((x) => x.id === id); return u?.name ?? u?.email ?? 'a former member'; };
+  const author = (id: string) => { const u = [...authors, ...resultAuthors].find((x) => x.id === id); return u?.name ?? u?.email ?? 'a former member'; };
   const rules = { ...DEFAULT_RULES, ...(season.rules as Partial<Rules>) };
   const sid = <input type="hidden" name="seasonId" value={season.id} />;
 
@@ -235,6 +242,41 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
           <button type="submit">Pin game</button>
         </ActionForm>
       )}
+
+      <h2>Results</h2>
+      {!published && <p>Scores are entered against the published version. Publish one first.</p>}
+      <ul>
+        {scored.map((pl) => {
+          const g = games.find((x) => x.id === pl.gameId);
+          const history = results.filter((r) => r.gameId === pl.gameId);
+          const last = history[history.length - 1];
+          if (!g) return null;
+          return (
+            <li key={pl.gameId}>
+              {gameLabel(g.key)} · {slotLabel(pl.fieldSlotId)} ·{' '}
+              {last ? (last.forfeit ? `${last.forfeit} forfeited` : `${last.homeRuns}–${last.awayRuns}`) : 'no score'}
+              {history.length > 1 && (
+                <ol>
+                  {history.map((r) => (
+                    <li key={r.id}>{r.forfeit ? `${r.forfeit} forfeited` : `${r.homeRuns}–${r.awayRuns}`} · {author(r.enteredBy)} · {r.enteredAt.toISOString().slice(0, 16)}Z{r.reason ? ` · ${r.reason}` : ''}</li>
+                  ))}
+                </ol>
+              )}
+              {edit && (
+                <ActionForm action={bind(recordResult)}>
+                  <input type="hidden" name="gameId" value={g.id} />
+                  <label>Home <input name="homeRuns" type="number" min={0} max={99} defaultValue={0} /></label>
+                  <label>Away <input name="awayRuns" type="number" min={0} max={99} defaultValue={0} /></label>
+                  <label>Forfeit by <select name="forfeit" defaultValue=""><option value="">none</option><option value="home">home</option><option value="away">away</option></select></label>
+                  {last && <label><input name="correction" type="checkbox" /> This corrects the score above</label>}
+                  <label>Reason (required for a correction) <input name="reason" maxLength={500} /></label>
+                  <button type="submit">{last ? 'Save correction' : 'Save score'}</button>
+                </ActionForm>
+              )}
+            </li>
+          );
+        })}
+      </ul>
 
       <h2>Rules</h2>
       {edit ? (

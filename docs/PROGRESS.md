@@ -1,3 +1,13 @@
+## L-015: score entry (2026-10-12)
+
+**Built.** `recordResult` action (`result-actions.ts`) and a Results section on the season page: a score form per game in the published version, the current score, and the history of a game's result when it has been corrected. Runs or a forfeit; only games on or before today in the season timezone (`Intl` with the explicit zone, injected `now()`); a second score is refused unless marked a correction with a reason; a correction supersedes the newest row. Unique violations (one original, superseded once) map to a "someone else just scored this game" refusal. 5 integration tests including the midnight boundary in Chicago.
+
+**Decided.** D-30: commissioners (`org.update`) enter scores; no template edit, scorekeeper role deferred.
+
+**Measured.** Gate: 353 tests green, drift clean.
+
+**Left behind.** No scorekeeper (member) role (D-30). Standings are not shown yet (L-016). Playoff results are L-018. Results for a game whose placement later leaves the published version stay stored but are not listed on the page.
+
 # Progress
 
 ## L-014: versions and publish (2026-10-12)

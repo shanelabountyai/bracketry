@@ -1,12 +1,10 @@
 # NEXT
 
-PICK UP HERE: L-015, score entry (**Sonnet** per the backlog). Read SCORE-01 to SCORE-03 in 00-master-prd.md and D-13 (GameResult is append-only by trigger; a correction is a new row with `supersedesId`; one original per game by partial unique index). Runs or forfeit, today-or-earlier rule on the injected clock (`now()` from `@/core/clock`, the season's timezone for "today"), corrections with a reason, result history.
+PICK UP HERE: L-016, standings page (**Sonnet** per the backlog). Read STAND-01 to STAND-06 in 00-master-prd.md, D-13, D-14, D-22. Table with reasons, tiebreak chain editor (reorder, restart or continue, logged change after the first game), unresolved-tie flag, commissioner decision form (append-only `TieResolution`). Standings are computed on read from `GameResult` (latest non-superseded row per game) through the engine in `src/lib/league/`; names replace the team ids in `StandingsRow.note` here (D-22).
 
-Watch at L-015: the scorekeeper permission is a template-owned edit (D-27 note): stop and say so rather than editing `src/core`. New actions need `ref('game')`-style fixtures already in `tests/fixtures/app.ts` (a game and a draft version exist for both fixture orgs; add a `gameResult` row there if an action takes `ref('gameResult')`). Map the unique violations, never check-then-write.
+Done at L-015: `recordResult` in `src/app/o/[org]/seasons/result-actions.ts`; history is a game's `GameResult` chain ordered by `enteredAt`; the newest row is the one nothing supersedes (`supersededBy: { none: {} }`). Forfeit rows store 0-0.
 
-Needs the owner: D-23 (the caller keeps past open slots out of the reschedule inventory) was a default at L-010. Confirm or replace it before L-017. D-27 (setup = `org.update`) was a default at L-012; the scorekeeper permission is raised at L-015.
-
-Open from L-008: standings notes carry team ids, not names (D-22). L-016 substitutes names.
+Needs the owner: D-23 (the caller keeps past open slots out of the reschedule inventory) was a default at L-010. Confirm or replace it before L-017. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it.
 
 Open from L-009: no function clears a bracket result, and the spec's correction rule asks for one. That and the D-15 fingerprint check land at L-018.
 
