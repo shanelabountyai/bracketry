@@ -4,7 +4,11 @@ import { inOrg, requireOrg } from '@/core/authz/guards';
 import { can } from '@/core/authz/permissions';
 import { db } from '@/core/db';
 import { ActionForm } from '@/core/ui/action-form';
-import { DEFAULT_RULES, type Rules } from '@/lib/league/types';
+import { capRefusal } from '@/lib/league/build-input';
+import { checkFeasibility } from '@/lib/league/feasibility';
+import { DEFAULT_RULES, type Rules, type ScoreReport } from '@/lib/league/types';
+import { generate } from '../generate-actions';
+import { loadSeasonInput } from '../load-input';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setSlotOpen } from '../actions';
 
 export const metadata = { title: 'Season setup' };
@@ -24,6 +28,11 @@ export default async function SeasonSetup({ params }: { params: Promise<{ org: s
     db.fieldSlot.findMany({ where: { seasonId: season.id, ...inOrg(ctx) }, orderBy: [{ day: 'asc' }, { start: 'asc' }] }),
     db.blackout.findMany({ where: { team: { seasonId: season.id }, ...inOrg(ctx) }, orderBy: [{ day: 'asc' }] }),
   ]);
+  const { rows, input } = await loadSeasonInput(ctx, season.id);
+  const feas = checkFeasibility(input);
+  const capped = capRefusal(rows.divisions, input.games.length);
+  const versions = await db.scheduleVersion.findMany({ where: { seasonId: season.id, ...inOrg(ctx) }, orderBy: { number: 'desc' }, take: 5 });
+  const latest = versions[0];
   const edit = can(ctx.role, 'org.update');
   const bind = <A extends unknown[], R>(fn: (slug: string, ...a: A) => R) => fn.bind(null, ctx.slug);
   const fieldName = (id: string) => fields.find((f) => f.id === id)?.name ?? '?';
@@ -126,6 +135,27 @@ export default async function SeasonSetup({ params }: { params: Promise<{ org: s
         </>
       )}
 
+      <h2>Generate</h2>
+      <p>Feasibility ({feas.feasible && !capped ? 'these inputs could fit' : 'blocked'}; a pass is a necessary check, not a promise): {feas.gamesNeeded} games needed, {feas.slotsAvailable} slots available, effective capacity {feas.effectiveCapacity}.</p>
+      {capped && <p role="alert">{capped}</p>}
+      <ul>{feas.shortfalls.map((f, i) => <li key={i}>{f.detail}</li>)}</ul>
+      {edit && (
+        <>
+          <ActionForm action={bind(generate)}>
+            {sid}
+            <label>Seed (blank for a new one) <input name="seed" type="number" min={0} defaultValue={latest ? String(latest.seed) : ''} /></label>
+            <label>Iterations <input name="maxIterations" type="number" min={1} max={10000} defaultValue={5000} /></label>
+            <button type="submit" disabled={!feas.feasible || !!capped || !input.games.length}>Generate draft</button>
+          </ActionForm>
+          <ActionForm action={bind(generate)}>
+            {sid}
+            <button type="submit" disabled={!feas.feasible || !!capped || !input.games.length}>New seed</button>
+          </ActionForm>
+        </>
+      )}
+      {latest && <VersionReport v={latest} teamName={teamName} />}
+      <ul>{versions.map((v) => <li key={v.id}>Version {v.number} · {v.status} · seed {String(v.seed)} · {v.fingerprint.slice(0, 12)}</li>)}</ul>
+
       <h2>Rules</h2>
       {edit ? (
         <ActionForm action={bind(saveRules)}>
@@ -145,5 +175,28 @@ export default async function SeasonSetup({ params }: { params: Promise<{ org: s
         <p>Max {rules.maxGamesPerTeamPerDay} game per team per day, {rules.minRestDays} rest days.</p>
       )}
     </main>
+  );
+}
+
+type Stored = ScoreReport & { before: { hardCount: number; unplaced: number; softCost: number } };
+
+/** What one run measured (D-5): before and after, effort spent, and every remaining violation in a sentence. */
+function VersionReport({ v, teamName }: { v: { number: number; seed: bigint; inputHash: string; iterations: number; accepted: number; report: unknown }; teamName: (id: string) => string }) {
+  const r = v.report as Stored;
+  const plain = (s: string) => s.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (m) => (teamName(m) === '?' ? m : teamName(m)));
+  return (
+    <section aria-label={`Version ${v.number} report`}>
+      <h3>Version {v.number}: seed {String(v.seed)}, input {v.inputHash.slice(0, 12)}</h3>
+      <table>
+        <thead><tr><th></th><th>Hard</th><th>Unplaced</th><th>Soft cost</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Before repair</th><td>{r.before.hardCount}</td><td>{r.before.unplaced}</td><td>{r.before.softCost}</td></tr>
+          <tr><th scope="row">After repair</th><td>{r.hardCount}</td><td>{r.unplaced.length}</td><td>{r.softCost}</td></tr>
+        </tbody>
+      </table>
+      <p>{v.iterations} iterations, {v.accepted} moves accepted. A local search: this is what it measured, not a claim of the best possible.</p>
+      {r.unplaced.length > 0 && <p>Cannot be published: {r.unplaced.length} games have no legal slot.</p>}
+      <ul>{[...r.hard, ...r.soft].map((x, i) => <li key={i}>{plain(x.detail)}</li>)}</ul>
+    </section>
   );
 }

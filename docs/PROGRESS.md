@@ -125,3 +125,13 @@ Every run stopped on patience (1,500 iterations with no accepted move), not on `
 **Measured.** `pending:check`: 138 tests, 133 NotImplementedError, 5 other failures (the "refusal" tests, which fail on their assertion). Per suite: bracket 17 (13/4), feasibility 5 (5/0), generate 15 (15/0), round-robin 77 (76/1), score 11 (11/0), standings 13 (13/0). Lint rule verified against a probe file: all five banned forms flagged, `new Date('...')` correctly not.
 
 **Left behind.** Nothing. The CLI has no commands until L-003.
+
+## L-013: generation console (2026-10-12)
+
+**Built.** `src/lib/league/build-input.ts` (pure): rows → `ScheduleInput` with D-24 slot ids `day|start|fieldId`, `capRefusal` (D-17: 16 teams per division, 200 games, 10,000 iterations), and `inputHash`. `seasons/load-input.ts` loads a season scoped to the org; `seasons/generate-actions.ts` checks caps and feasibility, generates with a seed (blank = new), and stores a draft `ScheduleVersion` with seed, input hash, fingerprint, report, iterations, accepted, plus its placements and an audit row in one transaction. The season page shows live feasibility, before/after hard, unplaced and soft cost, iterations and accepted moves, every remaining violation in a sentence, and a "New seed" button. 14 new tests (unit: builder, hash, caps; integration: stored draft, same seed reproduces fingerprint and input hash, infeasible and cap refusals, foreign org).
+
+**Decided.** D-28.
+
+**Measured.** 12 teams, 66 games, 42 slots, 10,000-iteration cap: 445 ms (3,361 iterations before patience stopped it), well under the 5 s D-17 limit. Gate: 343 tests green, drift clean.
+
+**Left behind.** Pins are not loaded into the input (L-014). No e2e spec for the console yet; it lands with L-021's golden path. Violation sentences still carry field ids; only team ids are replaced with names.
