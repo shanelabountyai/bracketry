@@ -192,7 +192,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
               <tr key={v.id}>
                 <td>{v.number}</td><td>{v.status}</td><td>{String(v.seed)}</td><td>{v.fingerprint.slice(0, 12)}</td><td>{author(v.createdBy)}</td>
                 <td>{(v.publishedAt ?? v.createdAt).toISOString().slice(0, 16).replace('T', ' ')} UTC</td><td>{v.reason ?? ''}</td>
-                <td>{r.hardCount} hard, {r.unplaced.length} unplaced, soft {r.softCost}</td>
+                <td>{r.hardCount} hard, {r.unplaced.length} unplaced, soft {r.softCost} · <a href={`/o/${ctx.slug}/seasons/${season.id}/quality?v=${v.number}`}>Quality</a></td>
                 <td>
                   {edit && v.status === 'draft' && (
                     <ActionForm action={bind(publish)}>
