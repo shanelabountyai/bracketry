@@ -1,5 +1,15 @@
 # Progress
 
+## L-014: versions and publish (2026-10-12)
+
+**Built.** `publish` (gate: `isPublishable` on the stored report; one transaction supersedes the previous published version, then publishes this draft with a reason and `publishedAt` from the injected clock; the partial unique index violation is mapped, never checked first), `setPin` and `removePin` in `seasons/version-actions.ts`. `compareAssignments` (pure, `src/lib/league/compare.ts`). `loadSeasonInput` now loads pins into `buildInput`, so generation works around them and `inputHash` changes with them. The season page has a version table (number, status, seed, fingerprint, who, when, why, score), a compare form (`?a=&b=`) and a pins section.
+
+**Decided.** D-29: compare by game key and slot identity, with stored home/away (resolves the D-28 note); a pin is legal when `scoreSchedule` finds no hard violation over the existing pins plus the new one; only a draft can be published.
+
+**Measured.** Gate: 348 tests green (5 new: 1 compare unit, 4 integration on publish, supersede, the one-published index, illegal and kept pins), lint 0 errors, drift clean.
+
+**Left behind.** No e2e spec (lands with L-021). Compare lists moved games as sentences, no side-by-side grid. Violation sentences from an illegal pin replace team ids only. A stale pin (its slot closed later) surfaces as a hard violation on the next generation rather than being dropped.
+
 ## L-012: season setup (2026-10-12)
 
 **Built.** `/o/[org]/seasons` (list, new season) and `/o/[org]/seasons/[season]` (divisions and teams, fields, weekly slot patterns, single slots with close and reopen, per-team blackouts and a bulk holiday, the rules form with defaults). Eleven actions in `seasons/actions.ts`, all `orgAction('org.update')`. `materializeSlots` in `src/lib/league/materialize.ts` (pure) turns a weekly pattern into slot rows across the season window. `tests/fixtures/app.ts` now seeds a season, division, team, field and slot in both harness orgs. A Seasons link in the org nav.

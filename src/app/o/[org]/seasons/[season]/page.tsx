@@ -6,15 +6,17 @@ import { db } from '@/core/db';
 import { ActionForm } from '@/core/ui/action-form';
 import { capRefusal } from '@/lib/league/build-input';
 import { checkFeasibility } from '@/lib/league/feasibility';
-import { DEFAULT_RULES, type Rules, type ScoreReport } from '@/lib/league/types';
+import { compareAssignments } from '@/lib/league/compare';
+import { DEFAULT_RULES, isPublishable, type Rules, type ScoreReport } from '@/lib/league/types';
 import { generate } from '../generate-actions';
 import { loadSeasonInput } from '../load-input';
+import { publish, removePin, setPin } from '../version-actions';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setSlotOpen } from '../actions';
 
 export const metadata = { title: 'Season setup' };
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export default async function SeasonSetup({ params }: { params: Promise<{ org: string; season: string }> }) {
+export default async function SeasonSetup({ params, searchParams }: { params: Promise<{ org: string; season: string }>; searchParams: Promise<{ a?: string; b?: string }> }) {
   const ctx = await requireOrg((await params).org);
   const id = (await params).season;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -31,12 +33,24 @@ export default async function SeasonSetup({ params }: { params: Promise<{ org: s
   const { rows, input } = await loadSeasonInput(ctx, season.id);
   const feas = checkFeasibility(input);
   const capped = capRefusal(rows.divisions, input.games.length);
-  const versions = await db.scheduleVersion.findMany({ where: { seasonId: season.id, ...inOrg(ctx) }, orderBy: { number: 'desc' }, take: 5 });
+  const versions = await db.scheduleVersion.findMany({ where: { seasonId: season.id, ...inOrg(ctx) }, orderBy: { number: 'desc' } });
   const latest = versions[0];
+  const [games, pins, authors] = await Promise.all([
+    db.game.findMany({ where: { seasonId: season.id, ...inOrg(ctx) }, orderBy: [{ divisionId: 'asc' }, { round: 'asc' }, { key: 'asc' }] }),
+    db.pin.findMany({ where: { seasonId: season.id, ...inOrg(ctx) } }),
+    db.user.findMany({ where: { id: { in: [...new Set(versions.map((v) => v.createdBy))] } }, select: { id: true, name: true, email: true } }),
+  ]);
+  const sp = await searchParams;
+  const [va, vb] = [versions.find((v) => String(v.number) === sp.a), versions.find((v) => String(v.number) === sp.b)];
+  const placed = async (versionId: string) => Object.fromEntries((await db.placement.findMany({ where: { scheduleVersionId: versionId, ...inOrg(ctx) }, select: { fieldSlotId: true, game: { select: { key: true } } } })).map((p) => [p.game.key, p.fieldSlotId]));
+  const moves = va && vb ? compareAssignments(await placed(va.id), await placed(vb.id)) : null;
   const edit = can(ctx.role, 'org.update');
   const bind = <A extends unknown[], R>(fn: (slug: string, ...a: A) => R) => fn.bind(null, ctx.slug);
   const fieldName = (id: string) => fields.find((f) => f.id === id)?.name ?? '?';
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '?';
+  const slotLabel = (id: string | null) => { const x = slots.find((s) => s.id === id); return x ? `${x.day} ${x.start} · ${fieldName(x.fieldId)}` : 'not placed'; };
+  const gameLabel = (key: string) => { const g = games.find((x) => x.key === key); return g ? `${teamName(g.homeTeamId)} v ${teamName(g.awayTeamId)}` : key; };
+  const author = (id: string) => { const u = authors.find((x) => x.id === id); return u?.name ?? u?.email ?? 'a former member'; };
   const rules = { ...DEFAULT_RULES, ...(season.rules as Partial<Rules>) };
   const sid = <input type="hidden" name="seasonId" value={season.id} />;
 
@@ -154,7 +168,73 @@ export default async function SeasonSetup({ params }: { params: Promise<{ org: s
         </>
       )}
       {latest && <VersionReport v={latest} teamName={teamName} />}
-      <ul>{versions.map((v) => <li key={v.id}>Version {v.number} · {v.status} · seed {String(v.seed)} · {v.fingerprint.slice(0, 12)}</li>)}</ul>
+
+      <h2>Versions</h2>
+      <table>
+        <thead><tr><th>#</th><th>Status</th><th>Seed</th><th>Fingerprint</th><th>By</th><th>When</th><th>Why</th><th>Score</th><th></th></tr></thead>
+        <tbody>
+          {versions.map((v) => {
+            const r = v.report as unknown as ScoreReport;
+            return (
+              <tr key={v.id}>
+                <td>{v.number}</td><td>{v.status}</td><td>{String(v.seed)}</td><td>{v.fingerprint.slice(0, 12)}</td><td>{author(v.createdBy)}</td>
+                <td>{(v.publishedAt ?? v.createdAt).toISOString().slice(0, 16).replace('T', ' ')} UTC</td><td>{v.reason ?? ''}</td>
+                <td>{r.hardCount} hard, {r.unplaced.length} unplaced, soft {r.softCost}</td>
+                <td>
+                  {edit && v.status === 'draft' && (
+                    <ActionForm action={bind(publish)}>
+                      <input type="hidden" name="versionId" value={v.id} />
+                      <label>Reason <input name="reason" required maxLength={500} /></label>
+                      <button type="submit" disabled={!isPublishable(r)}>Publish</button>
+                    </ActionForm>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {versions.length > 1 && (
+        <form method="get">
+          <label>Compare <select name="a" defaultValue={sp.a}>{versions.map((v) => <option key={v.id} value={v.number}>Version {v.number}</option>)}</select></label>
+          <label>with <select name="b" defaultValue={sp.b}>{versions.map((v) => <option key={v.id} value={v.number}>Version {v.number}</option>)}</select></label>
+          <button type="submit">Compare</button>
+        </form>
+      )}
+      {moves && (
+        <section aria-label="Comparison">
+          <h3>Version {va!.number} to version {vb!.number}: {moves.length} games changed slot</h3>
+          <ul>{moves.map((m) => <li key={m.key}>{gameLabel(m.key)}: {slotLabel(m.from)} → {slotLabel(m.to)}</li>)}</ul>
+        </section>
+      )}
+
+      <h2>Pins</h2>
+      <p>A pinned game never moves; generation works around it. A pin applies to the next generation, not to versions already made.</p>
+      <ul>
+        {pins.map((p) => {
+          const g = games.find((x) => x.id === p.gameId);
+          return (
+            <li key={p.id}>
+              {g ? gameLabel(g.key) : '?'} · {slotLabel(p.fieldSlotId)}
+              {edit && (
+                <ActionForm action={bind(removePin)}>
+                  {sid}
+                  <input type="hidden" name="gameId" value={p.gameId} />
+                  <button type="submit">Remove pin</button>
+                </ActionForm>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {edit && games.length > 0 && (
+        <ActionForm action={bind(setPin)}>
+          {sid}
+          <select name="gameId" aria-label="Game">{games.filter((g) => !pins.some((p) => p.gameId === g.id)).map((g) => <option key={g.id} value={g.id}>{gameLabel(g.key)}</option>)}</select>
+          <select name="fieldSlotId" aria-label="Slot">{slots.filter((s) => s.status !== 'closed' && !pins.some((p) => p.fieldSlotId === s.id)).map((s) => <option key={s.id} value={s.id}>{slotLabel(s.id)}</option>)}</select>
+          <button type="submit">Pin game</button>
+        </ActionForm>
+      )}
 
       <h2>Rules</h2>
       {edit ? (

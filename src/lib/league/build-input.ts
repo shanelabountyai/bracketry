@@ -12,6 +12,8 @@ export interface SeasonRows {
   slots: { day: string; start: string; fieldId: string }[];
   blackouts: { teamId: string; day: string }[];
   rules: Partial<Rules>;
+  /** game key → slot id (D-24), from the Pin rows. */
+  pinned?: Record<string, string>;
 }
 
 /** D-24: the engine's slot id is the slot's calendar identity, never the row's UUID. */
@@ -39,6 +41,7 @@ export function buildInput(rows: SeasonRows): ScheduleInput {
     slots,
     blackouts: rows.blackouts.map((b) => ({ team: b.teamId, day: b.day })),
     rules: { ...DEFAULT_RULES, ...rows.rules, weights: { ...DEFAULT_RULES.weights, ...rows.rules.weights } },
+    ...(rows.pinned && Object.keys(rows.pinned).length ? { pinned: rows.pinned } : {}),
   };
 }
 
