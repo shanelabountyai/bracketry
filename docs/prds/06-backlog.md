@@ -46,7 +46,7 @@ One item per session, top to bottom. ✅ built and committed, ⬜ not started (`
 |---|---|---|---|---|---|---|
 | 20 | ✅ L-019 | Public league pages: schedule by day and by team, standings, bracket; published version only; "moved from" mark for 7 days; a projection function that returns public fields only, with a test that fails if a contact field appears. Read the template's spec §7c and §8 before adding a public route | PUB-01 to PUB-03 | M | Opus | L-018 |
 | 21 | ✅ L-020 | Schedule quality table per version, with the floor where it can be counted | QUAL-01, QUAL-02 | S | Sonnet | L-013 |
-| 22 | ⬜ L-021 | Demo data and e2e: `seed:bracketry` builds Eastside Rec Softball (two divisions, published schedule, half a season of results with the three-way tie); `docs/DEMO.md`; one Playwright spec for golden path 2 | PRD §9 | M | Sonnet | L-019 |
+| 22 | ✅ L-021 | Demo data and e2e: `seed:bracketry` builds Eastside Rec Softball (two divisions, published schedule, half a season of results with the three-way tie); `docs/DEMO.md`; one Playwright spec for golden path 2 | PRD §9 | M | Sonnet | L-019 |
 | 23 | ⬜ L-022 | `WRITEUP.md`, executive write-up, deploy, build-log links | — | M | Sonnet | L-021 |
 
 ## P1 (after the above ships)

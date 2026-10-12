@@ -12,7 +12,7 @@ import { DEFAULT_STANDINGS, isPublishable, type GameResult, type ScheduleInput, 
 // The same season the unit suites generate, so the demo and the tests cannot drift apart.
 import { capstoneSlots, input, makeSlots, rules, teamIds } from '../tests/unit/league-fixtures';
 
-const NAMES = ['Aces', 'Bandits', 'Comets', 'Dukes', 'Eagles', 'Falcons', 'Giants', 'Hawks', 'Icemen'];
+export const NAMES = ['Aces', 'Bandits', 'Comets', 'Dukes', 'Eagles', 'Falcons', 'Giants', 'Hawks', 'Icemen'];
 /** Spec 01 §6.4: 8 teams × 1 forced short rest + Comets × 2, at REST weight 10. */
 const FLOOR = 100;
 
