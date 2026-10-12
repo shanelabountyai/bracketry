@@ -1,8 +1,8 @@
+# NEXT
+
 PICK UP HERE: L-021, demo data and e2e (**Sonnet** per the backlog): `seed:bracketry` builds Eastside Rec Softball (two divisions, published schedule, half a season of results with the three-way tie); `docs/DEMO.md`; one Playwright spec for golden path 2. Read PRD §9. Run every command in DEMO.md once before it ships.
 
 Done at L-020: schedule quality table. `src/lib/league/quality.ts` (`scheduleQuality`, `restFloor`), `src/app/o/[org]/seasons/quality-load.ts`, `seasons/[season]/quality/page.tsx`, `tests/unit/league-quality.test.ts`, `tests/integration/quality.test.ts`. D-34 records the rules.
-
-PICK UP HERE: L-020, schedule quality table per version, with the floor where it can be counted (**Sonnet** per the backlog). Read QUAL-01 and QUAL-02 in 00-master-prd.md. The numbers come from each version's stored `report` and from `scoreSchedule` (D-4); say what was measured, never "optimal" (D-5).
 
 Needs the owner: D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it. D-31, D-32, D-33 and D-34 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out, at `/l/<org>/<season id>`.
 
