@@ -1,13 +1,15 @@
 # NEXT
 
-PICK UP HERE: L-016, standings page (**Sonnet** per the backlog). Read STAND-01 to STAND-06 in 00-master-prd.md, D-13, D-14, D-22. Table with reasons, tiebreak chain editor (reorder, restart or continue, logged change after the first game), unresolved-tie flag, commissioner decision form (append-only `TieResolution`). Standings are computed on read from `GameResult` (latest non-superseded row per game) through the engine in `src/lib/league/`; names replace the team ids in `StandingsRow.note` here (D-22).
+PICK UP HERE: L-017, rainout tool (**Opus** per the backlog). Read RAIN-01 to RAIN-05 in 00-master-prd.md, D-12, D-18, and the L-009 reschedule notes in PROGRESS. Close a day or slots, add makeup slots, show displaced games, propose a draft version, publish, queue a notice per affected team. "Regenerate the rest" is a separate action with its warning. Only displaced games move (D-12).
 
-Done at L-015: `recordResult` in `src/app/o/[org]/seasons/result-actions.ts`; history is a game's `GameResult` chain ordered by `enteredAt`; the newest row is the one nothing supersedes (`supersededBy: { none: {} }`). Forfeit rows store 0-0.
+Done at L-016: standings on read in `seasons/standings-load.ts`; `saveChain` and `recordTie` in `seasons/standings-actions.ts`; page at `seasons/[season]/standings`. A chain change is an audit row (`season.tiebreak_changed`) plus a `standingsConfigVersion` bump.
 
-Needs the owner: D-23 is confirmed (2026-10-12). D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it.
+Needs the owner: D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it.
 
 Open from L-009: no function clears a bracket result, and the spec's correction rule asks for one. That and the D-15 fingerprint check land at L-018.
 
 Open from L-010: the capstone season is imported from `tests/unit/league-fixtures.ts`. If L-021's seed data defines the same league, make one source for both.
 
 Open from L-014: a pin whose slot is closed later is not dropped; it shows as a hard violation at the next generation (L-017's rainout tool should offer to remove such pins).
+
+Open from L-016: no editor for points, run-diff cap or forfeit settings (STAND-02); add one if a later item needs it.

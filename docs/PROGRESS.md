@@ -1,3 +1,13 @@
+## L-016: standings page (2026-10-12)
+
+**Built.** `seasons/standings-load.ts` computes each division's table on read: the newest non-superseded `GameResult` per game plus the `TieResolution` log, through `computeStandings`, with team names swapped into the reasons (D-22). `seasons/standings-actions.ts`: `saveChain` (reorder the steps, restart or continue; after the first score it needs a reason, is guarded by `standingsConfigVersion`, bumps it, and writes an audit row holding before, after and the reason) and `recordTie` (the submitted teams must be exactly one group the engine reports unresolved right now; appends a `TieResolution`). Page at `seasons/[season]/standings`: table with a "why" per row, an unresolved-tie flag, the decision form, the chain editor. 4 new integration tests.
+
+**Decided.** "Before the first game" means before the first result is entered, since the chain only matters once there is a result. The chain can be reordered but steps are not added or removed (D-14: a short fixed list, not a rules engine). Forms post `pos_<id>` fields, so both actions take loose schemas and validate the permutation in the body. The "logged change" is the audit log, not a new table.
+
+**Measured.** Gate: lint 0 errors, typecheck clean, 357 tests green, `foundation:drift` clean. No e2e run; no spec touches this page yet (golden path 2 lands at L-021).
+
+**Left behind.** Points, run-diff cap and forfeit settings (STAND-02) still have no editor; defaults apply. The audit rows for chain changes are not shown on the page. A later correction can leave a stored decision stale (it simply stops applying, per D-22).
+
 ## L-015: score entry (2026-10-12)
 
 **Built.** `recordResult` action (`result-actions.ts`) and a Results section on the season page: a score form per game in the published version, the current score, and the history of a game's result when it has been corrected. Runs or a forfeit; only games on or before today in the season timezone (`Intl` with the explicit zone, injected `now()`); a second score is refused unless marked a correction with a reason; a correction supersedes the newest row. Unique violations (one original, superseded once) map to a "someone else just scored this game" refusal. 5 integration tests including the midnight boundary in Chicago.
