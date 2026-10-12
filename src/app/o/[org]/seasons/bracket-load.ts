@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { inOrg, type OrgCtx } from '@/core/authz/guards';
+import type { OrgCtx } from '@/core/authz/guards';
 import { db } from '@/core/db';
 import { buildBracket, recordResult } from '@/lib/league/bracket';
 import type { Bracket, BracketMatch, BracketSlot, StandingsRow } from '@/lib/league/types';
@@ -29,12 +29,13 @@ const team = (s: BracketSlot) => (s.kind === 'team' ? s.team : null);
 export const cells = (m: BracketMatch) => ({ aTeamId: team(m.a), bTeamId: team(m.b), aRuns: m.result?.aRuns ?? null, bRuns: m.result?.bRuns ?? null, forfeit: m.result?.forfeit ?? null, winnerTeamId: m.winner ?? null });
 
 /** Standings as they are now, and each division's bracket beside them (BRKT-01..05). */
-export async function loadBrackets(ctx: OrgCtx, seasonId: string) {
+export async function loadBrackets(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string) {
+  const org = { orgId: ctx.orgId }; // inOrg without a session: the public page has an org and no member (PUB-01)
   const s = await loadStandings(ctx, seasonId);
   if (!s) return null;
   const [brackets, unscored] = await Promise.all([
-    db.bracket.findMany({ where: { division: { seasonId }, ...inOrg(ctx) }, include: { games: { include: { fieldSlot: { include: { field: true } } } } } }),
-    db.placement.findMany({ where: { scheduleVersion: { seasonId, status: 'published' }, game: { results: { none: {} } }, ...inOrg(ctx) }, select: { game: { select: { divisionId: true } } } }),
+    db.bracket.findMany({ where: { division: { seasonId }, ...org }, include: { games: { include: { fieldSlot: { include: { field: true } } } } } }),
+    db.placement.findMany({ where: { scheduleVersion: { seasonId, status: 'published' }, game: { results: { none: {} } }, ...org }, select: { game: { select: { divisionId: true } } } }),
   ]);
   const byDivision = s.byDivision.map((d) => {
     const row = brackets.find((b) => b.divisionId === d.division.id);

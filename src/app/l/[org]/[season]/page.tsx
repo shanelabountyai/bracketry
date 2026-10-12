@@ -1,0 +1,101 @@
+// public: a league's published schedule, standings and bracket are for coaches and players, who have no account (D-16, PUB-01)
+import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
+import { z } from 'zod';
+import { clientIp } from '@/core/http';
+import { hit, LIMITS } from '@/core/rate-limit';
+import { loadPublicLeague, type PublicGame } from '../../public-league';
+
+// Anonymous and read-only (spec §7c, D-33): force-dynamic so a new version or score shows on the next
+// read, rate-limited per IP like a share read (INV-09), and everything rendered comes from the projection.
+export const dynamic = 'force-dynamic';
+export const metadata = { title: 'League schedule' };
+
+export default async function League({ params, searchParams }: { params: Promise<{ org: string; season: string }>; searchParams: Promise<{ team?: string | string[] }> }) {
+  const { org, season } = await params;
+  if (!z.uuid().safeParse(season).success) notFound();
+  if (!(await hit(`league:ip:${clientIp(await headers())}`, LIMITS.shareReadPerIp))) return <main><h1>Too many requests</h1><p>Wait a few minutes and try again.</p></main>;
+  const league = (await loadPublicLeague(org, season)) ?? notFound();
+
+  const base = `/l/${org}/${season}`;
+  const pick = (await searchParams).team;
+  const team = typeof pick === 'string' && league.divisions.some((d) => d.standings.some((r) => r.team === pick)) ? pick : null;
+  const games = team ? league.games.filter((g) => g.home === team || g.away === team) : league.games;
+  const days = [...new Set(games.map((g) => g.day))];
+  const score = (g: PublicGame) => (g.forfeit ? `forfeit by ${g[g.forfeit]}` : g.homeRuns !== null ? `${g.homeRuns}-${g.awayRuns}` : null);
+
+  return (
+    <main>
+      <h1>{league.season}</h1>
+      <p><a href="#schedule">Schedule</a> · <a href="#standings">Standings</a> · <a href="#playoffs">Playoffs</a></p>
+
+      <section id="schedule">
+        <h2>{team ? `Schedule: ${team}` : 'Schedule'}</h2>
+        <nav aria-label="Schedule by team">
+          {team ? <a href={base}>All teams</a> : <strong>All teams</strong>}
+          {league.divisions.flatMap((d) => d.standings.map((r) => r.team)).sort().map((t) => (
+            <span key={t}> · {t === team ? <strong>{t}</strong> : <a href={`${base}?team=${encodeURIComponent(t)}`}>{t}</a>}</span>
+          ))}
+        </nav>
+        {days.length === 0 && <p>No games.</p>}
+        {days.map((day) => (
+          <div key={day}>
+            <h3>{day}</h3>
+            <ul>
+              {games.filter((g) => g.day === day).map((g) => (
+                <li key={`${g.start} ${g.field}`}>
+                  {g.start} · {g.field} · {g.home} v {g.away} ({g.division})
+                  {score(g) && <> · <strong>{score(g)}</strong></>}
+                  {g.movedFrom && <> · <em>moved from {g.movedFrom}</em></>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
+
+      <section id="standings">
+        <h2>Standings</h2>
+        {league.divisions.map((d) => (
+          <table key={d.name}>
+            <caption>{d.name}</caption>
+            <thead>
+              <tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col">GP</th><th scope="col">W</th><th scope="col">L</th><th scope="col">T</th><th scope="col">Pts</th><th scope="col">RF</th><th scope="col">RA</th><th scope="col">RD</th><th scope="col">Why</th></tr>
+            </thead>
+            <tbody>
+              {d.standings.map((r) => (
+                <tr key={r.team}>
+                  <td>{r.rank}</td><th scope="row">{r.team}</th><td>{r.played}</td><td>{r.wins}</td><td>{r.losses}</td><td>{r.ties}</td><td>{r.points}</td><td>{r.runsFor}</td><td>{r.runsAgainst}</td><td>{r.runDiff}</td>
+                  <td>{r.note}{r.needsDecision && ' (tied: awaiting the commissioner’s decision)'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ))}
+      </section>
+
+      <section id="playoffs">
+        <h2>Playoffs</h2>
+        {league.divisions.map((d) => (
+          <div key={d.name}>
+            <h3>{d.name}</h3>
+            {!d.bracket && <p>No bracket yet.</p>}
+            {d.bracket && (
+              <ul>
+                {d.bracket.map((m) => (
+                  <li key={m.id}>
+                    {m.id}: {m.a} v {m.b}
+                    {m.slot && <> · {m.slot}</>}
+                    {m.aRuns !== null && <> · {m.forfeit ? `forfeit by ${m[m.forfeit]}` : `${m.aRuns}-${m.bRuns}`}</>}
+                    {m.winner && <> · <strong>{m.winner} {m.aRuns !== null ? 'won' : 'advances on a bye'}</strong></>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {d.champion && <p><strong>Champion: {d.champion}</strong></p>}
+          </div>
+        ))}
+      </section>
+    </main>
+  );
+}
