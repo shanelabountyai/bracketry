@@ -55,6 +55,11 @@ test('standings through a three-way tie, a bracket and a champion, then a rainou
   expect([await rank(league.trio[1]!), await rank(league.trio[2]!)]).toEqual([first + 1, first + 2]);
   await expect(page.getByText('needs commissioner decision')).toHaveCount(0);
 
+  // What-if (L-023): the cut line is a query parameter, and nothing typed there is stored.
+  await page.getByLabel('Teams that qualify').fill('2');
+  await page.getByRole('button', { name: 'Show what-if table' }).click();
+  await expect(page.getByRole('columnheader', { name: 'Top 2' }).first()).toBeVisible();
+
   // Playoff weekend: two slots on the Saturday after the season and one on the Sunday.
   const saturday = addDays(league.lastDay, 2);
   await page.goto(base);

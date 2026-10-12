@@ -225,3 +225,14 @@ Every run stopped on patience (1,500 iterations with no accepted move), not on `
 **Measured.** 12 teams, 66 games, 42 slots, 10,000-iteration cap: 445 ms (3,361 iterations before patience stopped it), well under the 5 s D-17 limit. Gate: 343 tests green, drift clean.
 
 **Left behind.** Pins are not loaded into the input (L-014). No e2e spec for the console yet; it lands with L-021's golden path. Violation sentences still carry field ids; only team ids are replaced with names.
+
+## L-023: what-if standings and clinch flags (2026-10-12)
+
+**Built.** `pointsRankRange` in `src/lib/league/standings.ts` (spec 02 §8, fixture WI-1): best and worst rank on points over every win, tie and loss of the unplayed games, null above `ENUMERATION_LIMIT` (12). `loadStandings` takes optional hypothetical scores, adds them to the played results for unplayed games only and returns each division's open games and range. The standings page gains a "What if" GET form (a score per open game, and the cut line), a "Top n" column, a banner while any score is hypothetical, and the sentence saying how the flags are worked out and when they are missing. WHATIF-01 is `computeStandings` with more results; no second table function.
+
+**Decided.** D-38. The project was reopened for this item by the owner (2026-10-12).
+
+**Measured.** 9 teams and 12 open games (531,441 outcomes): 380 to 530 ms over three runs on the laptop. Gate: lint 0 errors, typecheck clean, 387 tests in 52 files, `foundation:drift` clean against v1.2.0. `e2e/golden-path.spec.ts`: 1 passed.
+
+**Left behind.** The flags are conservative by design: a team that gets in only through a tiebreaker is never marked clinched. The enumeration runs on every read of the page with no cache. The e2e step checks the cut line and the column, not a typed hypothetical score; that path is covered by the integration test on the loader. Not on the public page.
+

@@ -137,3 +137,27 @@ Fewer than 2 teams, or a duplicate team, is refused.
 - **Corrections.** Recording again on a match replaces its result and its winner in the next match, as long as the next match has no result. Once the next match has been played the correction is refused; the later result has to be cleared first (BRKT-05).
 
 `champion(bracket)` is the final's winner, or null.
+
+## 8. What-if and the points range (L-023)
+
+**What-if (WHATIF-01)** is `computeStandings` called with the played results plus the hypothetical ones. There is no second table function.
+
+**Points range (WHATIF-02).** `pointsRankRange(teams, results, unplayed, config)` tries every outcome of the unplayed games among `teams` (home win, tie, away win: 3 to the power of the games left) and returns, per team, on **points alone**:
+
+- `bestRank`: 1 + the fewest teams strictly ahead of it in any outcome.
+- `worstRank`: 1 + the most teams level with it or ahead in any outcome.
+
+Tiebreakers are not applied, so a team level on points is assumed to lose the tie for `worstRank` and win it for `bestRank`. With a cut of N teams: **clinched** when `worstRank ≤ N`, **eliminated** when `bestRank > N`. Both are therefore conservative: a team that would clinch only through a tiebreaker is not flagged.
+
+Above `ENUMERATION_LIMIT` (12) unplayed games the function returns null and the page shows no flags. 3^12 is 531,441 outcomes.
+
+**WI-1.** W 2, T 1, L 0. Played: A beat B, C and D (A 6); B beat C (B 2, C 0, D 0). Unplayed: B–D and C–D.
+
+| Team | Points, low to high | Best case | Worst case | Range |
+|---|---|---|---|---|
+| A | 6 | nobody can pass 4 | the same | 1 to 1 |
+| B | 2 to 4 | only A ahead | loses to D, C beats D: A ahead, C and D level on 2 | 2 to 4 |
+| C | 0 to 2 | D beats B, C beats D: B, C, D all on 2, only A ahead | loses: everyone is on 0 or more | 2 to 4 |
+| D | 0 to 4 | wins both: D 4, B 2, only A ahead | loses both: everyone is on 0 or more | 2 to 4 |
+
+Cut of 1: A has clinched; B, C and D are eliminated. Cut of 2: A has clinched; nobody else is flagged either way.

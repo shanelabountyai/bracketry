@@ -1,6 +1,6 @@
 // PENDING in the starter: rename to .test.ts when the item starts (L-008). Spec: docs/prds/02-standings-bracket-spec.md §1–§4, where each fixture is worked by hand.
 import { describe, expect, it } from 'vitest';
-import { computeStandings } from '@/lib/league/standings';
+import { computeStandings, ENUMERATION_LIMIT, pointsRankRange } from '@/lib/league/standings';
 import { DEFAULT_STANDINGS, type GameResult, type StandingsRow } from '@/lib/league/types';
 import { lazy, r } from './league-fixtures';
 
@@ -130,5 +130,26 @@ describe('L-008 where the spec leaves a choice', () => {
       '4th via overall runs allowed behind D',
     ]);
     expect(computeStandings(['A', 'B'], [r('A', 1, 'B', 0)], DEFAULT_STANDINGS).map((x) => x.note)).toEqual(['1st on points', '2nd on points']);
+  });
+});
+
+describe('WI-1 points range by enumeration (spec 02 §8)', () => {
+  const played = [r('A', 1, 'B', 0), r('A', 1, 'C', 0), r('A', 1, 'D', 0), r('B', 1, 'C', 0)];
+  const unplayed = [{ home: 'B', away: 'D' }, { home: 'C', away: 'D' }];
+  it('gives each team its best and worst finish on points', () => {
+    expect(pointsRankRange(['D', 'C', 'B', 'A'], played, unplayed, DEFAULT_STANDINGS)).toEqual([
+      { team: 'A', bestRank: 1, worstRank: 1 },
+      { team: 'B', bestRank: 2, worstRank: 4 },
+      { team: 'C', bestRank: 2, worstRank: 4 },
+      { team: 'D', bestRank: 2, worstRank: 4 },
+    ]);
+  });
+  it('with nothing left to play is the table as it stands, ties counted against the team', () => {
+    expect(pointsRankRange(ABCD, played, [], DEFAULT_STANDINGS)!.map((x) => `${x.team}:${x.bestRank}-${x.worstRank}`)).toEqual(['A:1-1', 'B:2-2', 'C:3-4', 'D:3-4']);
+  });
+  it('ignores games against teams outside the division, and stops above the limit', () => {
+    const many = Array.from({ length: ENUMERATION_LIMIT + 1 }, () => ({ home: 'A', away: 'B' }));
+    expect(pointsRankRange(ABCD, played, many, DEFAULT_STANDINGS)).toBeNull();
+    expect(pointsRankRange(ABCD, played, many.map((g) => ({ ...g, away: 'Z' })), DEFAULT_STANDINGS)).not.toBeNull();
   });
 });

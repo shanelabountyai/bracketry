@@ -1,4 +1,4 @@
-// L-008. Spec: docs/prds/02-standings-bracket-spec.md §1–§4. Suite: tests/unit/league-standings.test.ts
+// L-008, L-023. Spec: docs/prds/02-standings-bracket-spec.md §1–§4, §8. Suite: tests/unit/league-standings.test.ts
 import type { GameResult, Metric, StandingsConfig, StandingsRow, TeamId, TiebreakStep } from './types';
 
 type Tally = Pick<StandingsRow, 'played' | 'wins' | 'losses' | 'ties' | 'points' | 'runsFor' | 'runsAgainst' | 'runDiff'>;
@@ -141,4 +141,67 @@ export function computeStandings(
     }
   }
   return rows;
+}
+
+/** WHATIF-02. Above this many unplayed games the 3^n enumeration is not attempted. */
+export const ENUMERATION_LIMIT = 12;
+
+export interface PointsRange {
+  team: TeamId;
+  bestRank: number;
+  worstRank: number;
+}
+
+/**
+ * §8. Best and worst finish on points alone, over every win, tie and loss of the unplayed games among `teams`.
+ * No tiebreakers: best counts only teams strictly ahead, worst counts every team level or ahead. Null above the limit.
+ */
+export function pointsRankRange(
+  teams: readonly TeamId[],
+  results: readonly GameResult[],
+  unplayed: readonly Pick<GameResult, 'home' | 'away'>[],
+  config: StandingsConfig,
+): PointsRange[] | null {
+  const ids = [...new Set(teams)].sort();
+  const index = new Map(ids.map((t, i) => [t, i]));
+  const games = unplayed.flatMap((g) => {
+    const home = index.get(g.home);
+    const away = index.get(g.away);
+    return home === undefined || away === undefined ? [] : [[home, away] as const];
+  });
+  if (games.length > ENUMERATION_LIMIT) return null;
+
+  const base = tally(ids, results, config);
+  const points = ids.map((t) => base.get(t)!.points);
+  const fewestAhead = ids.map(() => ids.length);
+  const mostLevelOrAhead = ids.map(() => 0);
+  const { win, tie, loss } = config.points;
+  const outcomes = [[win, loss], [tie, tie], [loss, win]] as const;
+  // ponytail: every leaf recounts all pairs, about 0.4 s for 9 teams and 12 games on each read. Cache per result set if the page feels slow.
+  const walk = (i: number): void => {
+    const g = games[i];
+    if (!g) {
+      for (let t = 0; t < ids.length; t++) {
+        let ahead = 0;
+        let level = 0;
+        for (let u = 0; u < ids.length; u++) {
+          if (u === t) continue;
+          if (points[u]! > points[t]!) ahead += 1;
+          else if (points[u] === points[t]) level += 1;
+        }
+        fewestAhead[t] = Math.min(fewestAhead[t]!, ahead);
+        mostLevelOrAhead[t] = Math.max(mostLevelOrAhead[t]!, ahead + level);
+      }
+      return;
+    }
+    for (const [home, away] of outcomes) {
+      points[g[0]]! += home;
+      points[g[1]]! += away;
+      walk(i + 1);
+      points[g[0]]! -= home;
+      points[g[1]]! -= away;
+    }
+  };
+  walk(0);
+  return ids.map((team, t) => ({ team, bestRank: fewestAhead[t]! + 1, worstRank: mostLevelOrAhead[t]! + 1 }));
 }
