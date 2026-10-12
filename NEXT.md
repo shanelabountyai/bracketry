@@ -4,7 +4,7 @@ PICK UP HERE: L-016, standings page (**Sonnet** per the backlog). Read STAND-01 
 
 Done at L-015: `recordResult` in `src/app/o/[org]/seasons/result-actions.ts`; history is a game's `GameResult` chain ordered by `enteredAt`; the newest row is the one nothing supersedes (`supersededBy: { none: {} }`). Forfeit rows store 0-0.
 
-Needs the owner: D-23 (the caller keeps past open slots out of the reschedule inventory) was a default at L-010. Confirm or replace it before L-017. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it.
+Needs the owner: D-23 is confirmed (2026-10-12). D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it.
 
 Open from L-009: no function clears a bracket result, and the spec's correction rule asks for one. That and the D-15 fingerprint check land at L-018.
 
