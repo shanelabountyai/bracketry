@@ -1,5 +1,15 @@
 # Progress
 
+## L-012: season setup (2026-10-12)
+
+**Built.** `/o/[org]/seasons` (list, new season) and `/o/[org]/seasons/[season]` (divisions and teams, fields, weekly slot patterns, single slots with close and reopen, per-team blackouts and a bulk holiday, the rules form with defaults). Eleven actions in `seasons/actions.ts`, all `orgAction('org.update')`. `materializeSlots` in `src/lib/league/materialize.ts` (pure) turns a weekly pattern into slot rows across the season window. `tests/fixtures/app.ts` now seeds a season, division, team, field and slot in both harness orgs. A Seasons link in the org nav.
+
+**Decided.** D-27: commissioner = `org.update`, so no template file is edited. Day and time formats are checked in the action body after the scoped lookup, not in the schema, because the harness feeds `'x'` to a plain string and a schema-level refusal would hide the cross-org check (INV-02/03/04). A row that is not the org's is `notFound()`, never a domain error. A rerun of a weekly pattern is refused as a duplicate; slots a manual add or an earlier pattern already made are skipped. Makeup slots are left alone by close and reopen (L-017).
+
+**Measured.** INV-01 to INV-04 and INV-22 pass over all eleven new actions (14/14 in the harness file). Gate: lint 0 errors, typecheck clean, 333 tests across 40 files, `foundation:drift` clean. The full `npm test` ran in one pass with no slow outlier this time.
+
+**Left behind.** No close-a-slot guard for a slot that already holds a pin or placement: nothing is placed until L-013, and the rainout tool (L-017) owns displaced games. No edit or delete for teams, divisions, patterns or blackouts, and no season status change (setup to active comes with publish, L-014). The scorekeeper permission is raised at L-015 (D-27).
+
 ## L-011: data model and migrations (2026-10-08)
 
 **Built.** `prisma/schema/bracketry.prisma`: the fifteen §8 entities, five enums, every table with `orgId` and a cascade to `Org` (fifteen `// app` back-relation lines in `core.prisma`, the only template-owned edit, which the drift check excuses). One migration, `20261008000000_league_init`: about 500 lines are Prisma's own diff and the last 50 are hand-written (two partial unique indexes, the shared append-only trigger function and its two triggers, twelve CHECK constraints). `tests/integration/league-constraints.test.ts`: 18 tests that insert conflicting rows with raw SQL and assert the refusal by constraint name. The entity list and the SQL were shown to the owner first and confirmed.
