@@ -1,15 +1,15 @@
 # NEXT
 
-PICK UP HERE: L-017, rainout tool (**Opus** per the backlog). Read RAIN-01 to RAIN-05 in 00-master-prd.md, D-12, D-18, and the L-009 reschedule notes in PROGRESS. Close a day or slots, add makeup slots, show displaced games, propose a draft version, publish, queue a notice per affected team. "Regenerate the rest" is a separate action with its warning. Only displaced games move (D-12).
+PICK UP HERE: L-018, playoffs (**Opus** per the backlog). Read BRKT-01 to BRKT-05 in 00-master-prd.md, D-15, spec 02 (bracket sections) and the L-009 notes in PROGRESS. Generate a bracket for the top N with a frozen seeding snapshot, place playoff games into slots under the hard rules, enter results, feed forward, the correction rule, regenerate before the first result.
 
-Done at L-016: standings on read in `seasons/standings-load.ts`; `saveChain` and `recordTie` in `seasons/standings-actions.ts`; page at `seasons/[season]/standings`. A chain change is an audit row (`season.tiebreak_changed`) plus a `standingsConfigVersion` bump.
+Done at L-017: rainout tool. `seasons/rainout-load.ts` (`loadRainout`: displaced games, the D-23 inventory, the reschedule and regenerate inputs), `seasons/rainout-actions.ts` (`closeDay`, `proposeReschedule`, `regenerateRest`), `seasons/save-draft.ts` (every draft version is written here), notices queued in `publish`. D-31 records the rules.
 
-Needs the owner: D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it.
+Needs the owner: D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit whenever you want it. D-31 was taken as defaults; say so if any part should change.
 
 Open from L-009: no function clears a bracket result, and the spec's correction rule asks for one. That and the D-15 fingerprint check land at L-018.
 
 Open from L-010: the capstone season is imported from `tests/unit/league-fixtures.ts`. If L-021's seed data defines the same league, make one source for both.
 
-Open from L-014: a pin whose slot is closed later is not dropped; it shows as a hard violation at the next generation (L-017's rainout tool should offer to remove such pins).
-
 Open from L-016: no editor for points, run-diff cap or forfeit settings (STAND-02); add one if a later item needs it.
+
+Open from L-017: plain `generate` ignores played games (publish refuses the result if it moves a scored game). The Rainout section has not been opened in a browser; L-021's golden path 2 is its first e2e. Playoff slots (`BracketGame.fieldSlotId`) are not looked at by `closeDay`; L-018 decides what a closed playoff slot means.

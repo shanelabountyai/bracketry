@@ -9,7 +9,8 @@ import { checkFeasibility } from '@/lib/league/feasibility';
 import { compareAssignments } from '@/lib/league/compare';
 import { DEFAULT_RULES, isPublishable, type Rules, type ScoreReport } from '@/lib/league/types';
 import { generate } from '../generate-actions';
-import { loadSeasonInput } from '../load-input';
+import { closeDay, proposeReschedule, regenerateRest } from '../rainout-actions';
+import { loadRainout } from '../rainout-load';
 import { recordResult } from '../result-actions';
 import { publish, removePin, setPin } from '../version-actions';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setSlotOpen } from '../actions';
@@ -31,7 +32,8 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
     db.fieldSlot.findMany({ where: { seasonId: season.id, ...inOrg(ctx) }, orderBy: [{ day: 'asc' }, { start: 'asc' }] }),
     db.blackout.findMany({ where: { team: { seasonId: season.id }, ...inOrg(ctx) }, orderBy: [{ day: 'asc' }] }),
   ]);
-  const { rows, input } = await loadSeasonInput(ctx, season.id);
+  const rain = await loadRainout(ctx, season.id);
+  const { rows, input } = rain;
   const feas = checkFeasibility(input);
   const capped = capRefusal(rows.divisions, input.games.length);
   const versions = await db.scheduleVersion.findMany({ where: { seasonId: season.id, ...inOrg(ctx) }, orderBy: { number: 'desc' } });
@@ -57,6 +59,9 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '?';
   const slotLabel = (id: string | null) => { const x = slots.find((s) => s.id === id); return x ? `${x.day} ${x.start} · ${fieldName(x.fieldId)}` : 'not placed'; };
   const gameLabel = (key: string) => { const g = games.find((x) => x.key === key); return g ? `${teamName(g.homeTeamId)} v ${teamName(g.awayTeamId)}` : key; };
+  /** An engine slot id (`day|start|fieldId`, D-24) in words. */
+  const where = (id: string) => { const [d, t, f] = id.split('|'); return `${d} ${t} · ${fieldName(f ?? '')}`; };
+  const unplayed = Object.keys(rain.current).length - Object.keys(rain.played).length;
   const author = (id: string) => { const u = [...authors, ...resultAuthors].find((x) => x.id === id); return u?.name ?? u?.email ?? 'a former member'; };
   const rules = { ...DEFAULT_RULES, ...(season.rules as Partial<Rules>) };
   const sid = <input type="hidden" name="seasonId" value={season.id} />;
@@ -64,7 +69,6 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   return (
     <main>
       <h1>{season.name}</h1>
-      <p><a href={`/o/${ctx.slug}/seasons/${season.id}/standings`}>Standings</a></p>
       <p><a href={`/o/${ctx.slug}/seasons/${season.id}/standings`}>Standings</a></p>
       <p>{season.firstDay} to {season.lastDay} · {season.timezone} · {season.gameMinutes}-minute games · {season.status}</p>
 
@@ -176,7 +180,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
           </ActionForm>
         </>
       )}
-      {latest && <VersionReport v={latest} teamName={teamName} />}
+      {latest && <VersionReport v={latest} teamName={teamName} gameLabel={gameLabel} where={where} />}
 
       <h2>Versions</h2>
       <table>
@@ -280,6 +284,45 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
         })}
       </ul>
 
+      <h2>Rainout</h2>
+      <p>Close the slots that were lost, add makeup slots if you have them, then propose a reschedule. Only games in a closed slot move; a game with a score is never moved. Free slots on or before {rain.today} are not offered. Teams are notified when the new version is published.</p>
+      {edit && (
+        <>
+          <ActionForm action={bind(closeDay)}>
+            {sid}
+            <label>Close every slot on <input name="day" type="date" required /></label>
+            <button type="submit">Close day</button>
+          </ActionForm>
+          {fields.length > 0 && (
+            <ActionForm action={bind(addSlot)}>
+              {sid}
+              <input type="hidden" name="makeup" value="on" />
+              <select name="fieldId" aria-label="Makeup field">{fields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
+              <label>Makeup day <input name="day" type="date" required /></label>
+              <label>Start <input name="start" type="time" required /></label>
+              <button type="submit">Add makeup slot</button>
+            </ActionForm>
+          )}
+        </>
+      )}
+      <h3>Displaced games ({rain.displaced.length})</h3>
+      <ul>{rain.displaced.map((d) => <li key={d.key}>{gameLabel(d.key)} · was {where(d.slot)}</li>)}</ul>
+      {edit && published && (
+        <>
+          <ActionForm action={bind(proposeReschedule)}>
+            {sid}
+            <button type="submit" disabled={!rain.displaced.length}>Propose reschedule</button>
+          </ActionForm>
+          <h3>Regenerate the rest of the season</h3>
+          <p role="alert">This is not a reschedule. It keeps the {Object.keys(rain.played).length} games that have a score where they were played and builds a new schedule for the other {unplayed}, so any of those {unplayed} games may move, including ones no rain touched. A game without a score counts as not played. The draft reports how many moved.</p>
+          <ActionForm action={bind(regenerateRest)}>
+            {sid}
+            <label><input name="confirm" type="checkbox" required /> I understand up to {unplayed} games may move</label>
+            <button type="submit">Regenerate the rest</button>
+          </ActionForm>
+        </>
+      )}
+
       <h2>Rules</h2>
       {edit ? (
         <ActionForm action={bind(saveRules)}>
@@ -302,23 +345,41 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   );
 }
 
-type Stored = ScoreReport & { before: { hardCount: number; unplaced: number; softCost: number } };
+type Stored = ScoreReport & {
+  before?: { hardCount: number; unplaced: number; softCost: number };
+  reschedule?: { of: number; moved: { game: string; from: string; to: string }[]; unplaced: Record<string, string> };
+  regenerated?: { of: number; kept: number; unplayed: number; moved: number };
+};
 
 /** What one run measured (D-5): before and after, effort spent, and every remaining violation in a sentence. */
-function VersionReport({ v, teamName }: { v: { number: number; seed: bigint; inputHash: string; iterations: number; accepted: number; report: unknown }; teamName: (id: string) => string }) {
+function VersionReport({ v, teamName, gameLabel, where }: { v: { number: number; seed: bigint; inputHash: string; iterations: number; accepted: number; report: unknown }; teamName: (id: string) => string; gameLabel: (key: string) => string; where: (slot: string) => string }) {
   const r = v.report as Stored;
   const plain = (s: string) => s.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (m) => (teamName(m) === '?' ? m : teamName(m)));
   return (
     <section aria-label={`Version ${v.number} report`}>
       <h3>Version {v.number}: seed {String(v.seed)}, input {v.inputHash.slice(0, 12)}</h3>
-      <table>
-        <thead><tr><th></th><th>Hard</th><th>Unplaced</th><th>Soft cost</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Before repair</th><td>{r.before.hardCount}</td><td>{r.before.unplaced}</td><td>{r.before.softCost}</td></tr>
-          <tr><th scope="row">After repair</th><td>{r.hardCount}</td><td>{r.unplaced.length}</td><td>{r.softCost}</td></tr>
-        </tbody>
-      </table>
-      <p>{v.iterations} iterations, {v.accepted} moves accepted. A local search: this is what it measured, not a claim of the best possible.</p>
+      {r.reschedule && (
+        <>
+          <p>Reschedule of version {r.reschedule.of}: {r.reschedule.moved.length} displaced games moved, {r.unplaced.length} with no legal slot. Every other game kept its slot. Soft cost {r.softCost}. One pass, a game at a time: not a claim of the best joint placement.</p>
+          <ul>
+            {r.reschedule.moved.map((m) => <li key={m.game}>{gameLabel(m.game)}: {where(m.from)} → {where(m.to)}</li>)}
+            {Object.entries(r.reschedule.unplaced).map(([key, why]) => <li key={key}>{gameLabel(key)}: not placed. {why}</li>)}
+          </ul>
+        </>
+      )}
+      {r.regenerated && <p>Regenerated from version {r.regenerated.of}: {r.regenerated.kept} played games kept, {r.regenerated.moved} of {r.regenerated.unplayed} unplayed games moved.</p>}
+      {r.before && (
+        <>
+          <table>
+            <thead><tr><th></th><th>Hard</th><th>Unplaced</th><th>Soft cost</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Before repair</th><td>{r.before.hardCount}</td><td>{r.before.unplaced}</td><td>{r.before.softCost}</td></tr>
+              <tr><th scope="row">After repair</th><td>{r.hardCount}</td><td>{r.unplaced.length}</td><td>{r.softCost}</td></tr>
+            </tbody>
+          </table>
+          <p>{v.iterations} iterations, {v.accepted} moves accepted. A local search: this is what it measured, not a claim of the best possible.</p>
+        </>
+      )}
       {r.unplaced.length > 0 && <p>Cannot be published: {r.unplaced.length} games have no legal slot.</p>}
       <ul>{[...r.hard, ...r.soft].map((x, i) => <li key={i}>{plain(x.detail)}</li>)}</ul>
     </section>

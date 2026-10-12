@@ -37,7 +37,7 @@ One item per session, top to bottom. ✅ built and committed, ⬜ not started (`
 | 15 | ✅ L-014 | Versions and publish: version list, compare two versions, publish with a reason (gate: publishable), supersede the previous. Pins: set, refuse an illegal pin, regenerate around pins | SCHED-02 to SCHED-04, GEN-06 | M | Sonnet | L-013 |
 | 16 | ✅ L-015 | Score entry: runs or forfeit, today-or-earlier rule on the injected clock, corrections as superseding rows with a reason, result history | SCORE-01 to SCORE-03; D-13 | M | Sonnet | L-014 |
 | 17 | ✅ L-016 | Standings page: table with reasons, chain editor (reorder, restart or continue, logged change after first game), unresolved-tie flag and the commissioner decision form | STAND-01 to STAND-06 | M | Sonnet | L-015 |
-| 18 | ⬜ L-017 | Rainout tool: close a day or slots, add makeup slots, see displaced games, propose a draft version, publish, queue a notice per affected team. Separate "regenerate the rest" action with its warning | RAIN-01 to RAIN-05; D-12, D-18 | L | Opus | L-014 |
+| 18 | ✅ L-017 | Rainout tool: close a day or slots, add makeup slots, see displaced games, propose a draft version, publish, queue a notice per affected team. Separate "regenerate the rest" action with its warning | RAIN-01 to RAIN-05; D-12, D-18 | L | Opus | L-014 |
 | 19 | ⬜ L-018 | Playoffs: generate a bracket for the top N with a frozen seeding snapshot, place playoff games into slots under the hard rules, enter results, feed forward, correction rule, regenerate-before-first-result | BRKT-01 to BRKT-05; D-15 | L | Opus | L-016 |
 
 ## Milestone 3: Public pages and proof

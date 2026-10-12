@@ -8,14 +8,12 @@ import { inOrg } from '@/core/authz/guards';
 import { now } from '@/core/clock';
 import { db } from '@/core/db';
 import { Refused } from '@/core/errors';
+import { dayIn } from './rainout-load';
 
 // Score entry (SCORE-01 to SCORE-03, D-13). Same permission as setup: the scorekeeper role needs a template
 // edit, so commissioners (org.update) enter and correct scores for now (D-30). A result row is never updated;
 // a correction is a new row that supersedes the latest one.
 const PERM = 'org.update' as const;
-
-/** 'YYYY-MM-DD' for an instant in an IANA zone. Explicit timeZone, so the process timezone never leaks in (D-6). */
-const dayIn = (tz: string, at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
 
 const runs = z.coerce.number('Runs must be a whole number.').int('Runs must be a whole number.').min(0, 'Runs cannot be negative.').max(99, 'Runs are at most 99.');
 

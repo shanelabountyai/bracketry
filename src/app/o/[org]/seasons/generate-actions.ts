@@ -2,15 +2,13 @@
 import { randomInt } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { audit } from '@/core/audit';
 import { orgAction, ref } from '@/core/authz/action';
-import { inOrg } from '@/core/authz/guards';
-import { db } from '@/core/db';
 import { Refused } from '@/core/errors';
-import { capRefusal, CAPS, inputHash } from '@/lib/league/build-input';
+import { capRefusal, CAPS } from '@/lib/league/build-input';
 import { checkFeasibility } from '@/lib/league/feasibility';
 import { generateSchedule } from '@/lib/league/schedule';
 import { loadSeasonInput } from './load-input';
+import { saveDraft } from './save-draft';
 
 // Generation console (GEN-01, GEN-03..05, GEN-07, SCHED-01). Same permission as setup (D-27).
 // Runs synchronously with the D-17 caps. A version is created once and never updated (D-10).
@@ -37,37 +35,7 @@ export const generate = orgAction(
     const b = result.before;
     const report = { ...result.report, before: { hardCount: b.hardCount, unplaced: b.unplaced.length, softCost: b.softCost } };
 
-    try {
-      await db.$transaction(async (tx) => {
-        await tx.game.createMany({
-          data: input.games.map((g) => ({ ...inOrg(ctx), seasonId: season.id, divisionId: g.division!, key: g.key, round: g.round, leg: g.leg, homeTeamId: g.home, awayTeamId: g.away })),
-          skipDuplicates: true,
-        });
-        const gameIds = new Map((await tx.game.findMany({ where: { seasonId: season.id }, select: { id: true, key: true } })).map((g) => [g.key, g.id]));
-        const last = await tx.scheduleVersion.aggregate({ where: { seasonId: season.id }, _max: { number: true } });
-        const v = await tx.scheduleVersion.create({
-          data: {
-            ...inOrg(ctx),
-            seasonId: season.id,
-            number: (last._max.number ?? 0) + 1,
-            seed: BigInt(seed),
-            inputHash: inputHash(input),
-            fingerprint: result.fingerprint,
-            report: report as object,
-            iterations: result.iterations,
-            accepted: result.accepted,
-            createdBy: ctx.userId,
-          },
-        });
-        await tx.placement.createMany({
-          data: Object.entries(result.assignment).map(([key, slot]) => ({ ...inOrg(ctx), seasonId: season.id, scheduleVersionId: v.id, gameId: gameIds.get(key)!, fieldSlotId: slotRowIds.get(slot)! })),
-        });
-        await audit(ctx, 'schedule.generated', { targetType: 'scheduleVersion', targetId: v.id, data: { seed, fingerprint: result.fingerprint } }, tx);
-      });
-    } catch (e) {
-      if ((e as { code?: string })?.code === 'P2002') throw new Refused('Another version was created at the same moment. Generate again.');
-      throw e;
-    }
+    await saveDraft(ctx, season.id, { input, assignment: result.assignment, slotRowIds, seed, report, iterations: result.iterations, accepted: result.accepted, action: 'schedule.generated' });
     revalidatePath(`/o/${ctx.slug}/seasons/${season.id}`);
     return { notice: `Draft created with seed ${seed}: ${result.report.hardCount} hard, ${result.report.unplaced.length} unplaced, soft cost ${b.softCost} → ${result.report.softCost}.` };
   },

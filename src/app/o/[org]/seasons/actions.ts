@@ -108,24 +108,26 @@ export const addSlotPattern = orgAction(
 
 export const addSlot = orgAction(
   PERM,
-  z.object({ seasonId: ref('season'), fieldId: ref('field'), day, start: hm }),
+  z.object({ seasonId: ref('season'), fieldId: ref('field'), day, start: hm, makeup: z.string().optional() }), // a makeup slot posts makeup=on (RAIN-01)
   async (ctx, i) => {
     const s = await mine(db.season.findFirst({ where: { id: i.seasonId, ...inOrg(ctx) } }));
     const f = await mine(db.field.findFirst({ where: { id: i.fieldId, ...inOrg(ctx) }, select: { id: true } }));
     validDay(i.day);
     validHm(i.start);
-    if (i.day < s.firstDay || i.day > s.lastDay) throw new Refused('That day is outside the season.');
-    await write(() => db.fieldSlot.create({ data: { ...inOrg(ctx), seasonId: s.id, fieldId: f.id, day: i.day, start: i.start } }), 'That slot already exists.');
+    // A makeup day may fall after the last scheduled day; it may not fall before the season.
+    if (i.day < s.firstDay || (!i.makeup && i.day > s.lastDay)) throw new Refused('That day is outside the season.');
+    await write(() => db.fieldSlot.create({ data: { ...inOrg(ctx), seasonId: s.id, fieldId: f.id, day: i.day, start: i.start, status: i.makeup ? 'makeup' : 'open' } }), 'That slot already exists.');
     revalidatePath(seasonPage(ctx, s.id));
   },
 );
 
-/** Close or reopen one slot. A makeup slot (L-017) is left alone. */
+/** Close or reopen one slot. Closing removes a pin on it: a pin to a closed slot can never be met. A makeup slot is left alone. */
 export const setSlotOpen = orgAction(PERM, z.object({ id: ref('fieldSlot'), open: z.enum(['true', 'false']) }), async (ctx, i) => {
   const open = i.open === 'true';
   const slot = await mine(db.fieldSlot.findFirst({ where: { id: i.id, ...inOrg(ctx) }, select: { seasonId: true } }));
   const r = await db.fieldSlot.updateMany({ where: { id: i.id, ...inOrg(ctx), status: open ? 'closed' : 'open' }, data: { status: open ? 'open' : 'closed' } });
   if (!r.count) throw new Refused(open ? 'That slot is not closed.' : 'That slot is not open.');
+  if (!open) await db.pin.deleteMany({ where: { fieldSlotId: i.id, ...inOrg(ctx) } });
   revalidatePath(seasonPage(ctx, slot.seasonId));
 });
 
