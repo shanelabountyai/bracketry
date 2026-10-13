@@ -89,6 +89,7 @@ Sign in at `http://localhost:5100/demo`, then Eastside Rec Softball → Seasons 
 ## What to concede before you are asked
 
 - **It is a heuristic, never "optimal".** 122 against a counted floor of 100 here, 114 against 100 on the capstone. The floor counts one rule only. No solver library is used, on purpose.
+- **A model beat the demo's schedule.** The demo season was given to three Claude models, three times each, and scored by the same function (L-025, one run on 2026-10-12). All nine answers were publishable; Opus 5.5 scored 102, 100 and 100 against the demo's 122, at 60 to 86 cents and four to six minutes an answer. The generator takes under a second, costs nothing, and from seeds 1 to 20 finishes between 100 and 124. The table is in `WRITEUP.md` and the rows in `docs/bench-01-results.json`. Do not rerun it in a demo: `npm run league:bench` needs an API key and spends money; `npm run league:bench -- --dry` prints the prompt and the generator's row for free.
 - **The data is synthetic and the app is not deployed.** Eastside Rec Softball does not exist. Scores come from a seeded random generator with the tie forced.
 - **The tie is not always at the top of the table.** Mid-season, teams have played different numbers of games, so the seed takes the first trio it can leave level on its own. On 2026-10-12 it was ranks 3 to 5.
 - **A champion cannot be crowned live.** A playoff game is scored on or after its day and is only ever placed after today. Part 1 shows the champion; the end-to-end test gets there by moving the slot's date in the test database.
