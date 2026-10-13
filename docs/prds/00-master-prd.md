@@ -131,6 +131,12 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **PUB-01** A public, read-only league page per season: schedule by day and by team, standings with reasons, bracket. It shows the published version only.
 - **PUB-02** A game that moved in the latest version carries a "moved from" mark for 7 days.
 - **PUB-03** Public pages expose team names, slots, fields and scores. No contact details, no audit data, no draft versions.
+- **PUB-04** (L-032) The team link, `?team=<name>`, opens on that team: above its schedule is its next game, the first on or after today (season timezone) with no score, or a line saying it has none left.
+- **PUB-05** (L-032) A day on the public page reads "Sat Oct 18": in the day headings, the "moved from" mark and a playoff game's slot. It is worked from the day string, never from an instant (D-6).
+- **PUB-06** (L-032) Under the season name is "Schedule updated" with the time the shown version was published, in the season's timezone, and below it the games that version moved, each with its new and old slot, for as long as PUB-02's mark stands. With a team picked, only that team's.
+- **PUB-07** (L-032) The standings fit a phone: the reason sits under the team name, not in a column of its own, and at 390 px wide the page does not scroll sideways.
+- **PUB-08** (L-032) Once a division has a bracket, its standings carry a playoff line under the last qualifying place, with the number of teams the bracket was seeded with. Before a bracket there is no line (D-46).
+- **PUB-09** (L-032) A playoff game is named by its round, counted from the end: Final, Semifinal 1, Quarterfinal 3, and "Round 1 game 2" before that. A side still to be decided reads "winner of Semifinal 1".
 
 ### QUAL — schedule quality
 

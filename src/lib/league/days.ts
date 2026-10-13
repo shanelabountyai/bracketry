@@ -30,3 +30,8 @@ export const dayDiff = (a: Ymd, b: Ymd): number => dayNumber(b) - dayNumber(a);
 
 /** 0 = Sunday … 6 = Saturday. 1970-01-01 was a Thursday. */
 export const weekday = (ymd: Ymd): number => (((dayNumber(ymd) + 4) % 7) + 7) % 7;
+
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** 'Sat Oct 18'. From the string by arithmetic: no locale, no timezone. */
+export const shortDay = (ymd: Ymd): string => `${DOW[weekday(ymd)]} ${MONTH[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8))}`;

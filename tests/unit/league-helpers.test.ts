@@ -1,6 +1,6 @@
 // GREEN in the starter. These helpers ship implemented; this suite pins their behaviour.
 import { describe, expect, it } from 'vitest';
-import { addDays, dayDiff, dayNumber, weekday } from '@/lib/league/days';
+import { addDays, dayDiff, dayNumber, shortDay, weekday } from '@/lib/league/days';
 import { fingerprint } from '@/lib/league/fingerprint';
 import { mulberry32, shuffle } from '@/lib/league/prng';
 
@@ -20,6 +20,7 @@ describe('days', () => {
   it('knows the weekday without the process timezone', () => {
     expect(weekday('2027-04-06')).toBe(2); // Tuesday
     expect(weekday('1970-01-01')).toBe(4); // Thursday
+    expect([shortDay('2027-04-06'), shortDay('1970-01-01'), shortDay('2026-10-18')]).toEqual(['Tue Apr 6', 'Thu Jan 1', 'Sun Oct 18']);
   });
   it('adds and subtracts across month and leap-year edges', () => {
     expect(addDays('2027-04-29', 5)).toBe('2027-05-04');

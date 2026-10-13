@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { now } from '@/core/clock';
 import { db } from '@/core/db';
 import { champion } from '@/lib/league/bracket';
+import { shortDay } from '@/lib/league/days';
 import type { BracketMatch, BracketSlot, StandingsRow } from '@/lib/league/types';
 import { loadBrackets } from '@/app/o/[org]/seasons/bracket-load';
 import { SCORED } from '@/app/o/[org]/seasons/rainout-load';
@@ -33,7 +34,7 @@ interface PlacementRow {
   fieldSlot: SlotRow;
   game: { division: { name: string }; homeTeam: { name: string; divisionId: string }; awayTeam: { name: string; divisionId: string }; results: { homeRuns: number; awayRuns: number; forfeit: 'home' | 'away' | null }[] };
 }
-const slotLabel = (s: SlotRow) => `${s.day} ${s.start} · ${s.field.name}`;
+const slotLabel = (s: SlotRow) => `${shortDay(s.day)} ${s.start} · ${s.field.name}`;
 
 /** `was` is the game's slot in the version before, or null when it did not move or the mark has expired. */
 export function toPublicGame(p: PlacementRow, was: SlotRow | null): PublicGame {
@@ -77,6 +78,8 @@ export function toPublicStanding(r: StandingsRow & { name: string }): PublicStan
 
 export interface PublicMatch {
   id: string;
+  /** The game's name by round (PUB-09). */
+  label: string;
   round: number;
   a: string;
   b: string;
@@ -86,11 +89,17 @@ export interface PublicMatch {
   forfeit: 'a' | 'b' | null;
   winner: string | null;
 }
-export const blankPublicMatch = (): PublicMatch => ({ id: '', round: 0, a: '', b: '', slot: null, aRuns: null, bRuns: null, forfeit: null, winner: null });
+export const blankPublicMatch = (): PublicMatch => ({ id: '', label: '', round: 0, a: '', b: '', slot: null, aRuns: null, bRuns: null, forfeit: null, winner: null });
 
-export function toPublicMatch(m: BracketMatch, slot: SlotRow | null, name: (teamId: string) => string): PublicMatch {
-  const show = (x: BracketSlot) => (x.kind === 'team' ? `(${x.seed}) ${name(x.team)}` : x.kind === 'bye' ? 'bye' : `winner of ${x.matchId}`);
-  return { ...blankPublicMatch(), id: m.id, round: m.round, a: show(m.a), b: show(m.b), slot: slot && slotLabel(slot), aRuns: m.result?.aRuns ?? null, bRuns: m.result?.bRuns ?? null, forfeit: m.result?.forfeit ?? null, winner: m.winner ? name(m.winner) : null };
+/** PUB-09: a playoff game's name, counted from the last round. `rounds` is how many the bracket has. */
+export function roundName(round: number, index: number, rounds: number): string {
+  const left = rounds - round;
+  return left === 0 ? 'Final' : left === 1 ? `Semifinal ${index}` : left === 2 ? `Quarterfinal ${index}` : `Round ${round} game ${index}`;
+}
+
+export function toPublicMatch(m: BracketMatch, slot: SlotRow | null, name: (teamId: string) => string, label: (matchId: string) => string = (id) => id): PublicMatch {
+  const show = (x: BracketSlot) => (x.kind === 'team' ? `(${x.seed}) ${name(x.team)}` : x.kind === 'bye' ? 'bye' : `winner of ${label(x.matchId)}`);
+  return { ...blankPublicMatch(), id: m.id, label: label(m.id), round: m.round, a: show(m.a), b: show(m.b), slot: slot && slotLabel(slot), aRuns: m.result?.aRuns ?? null, bRuns: m.result?.bRuns ?? null, forfeit: m.result?.forfeit ?? null, winner: m.winner ? name(m.winner) : null };
 }
 
 export interface PublicLeague {
@@ -101,7 +110,8 @@ export interface PublicLeague {
   publishedAt: Date;
   /** Regular-season games of the published version, in day, time and field order. */
   games: PublicGame[];
-  divisions: { name: string; standings: PublicStanding[]; bracket: PublicMatch[] | null; champion: string | null }[];
+  /** `cut` is how many teams the division's bracket was seeded with, null before a bracket (PUB-08). */
+  divisions: { name: string; standings: PublicStanding[]; cut: number | null; bracket: PublicMatch[] | null; champion: string | null }[];
 }
 
 /** PUB-02: how long a moved game keeps its mark, counted from the moment the version was published. */
@@ -154,10 +164,16 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
     games,
     divisions: s.byDivision.map(({ division, rows: table, name, bracket: b }) => {
       const won = b ? champion(b.bracket) : null;
+      const matches = b ? b.bracket.rounds.flat() : [];
+      const label = (id: string) => {
+        const m = matches.find((x) => x.id === id);
+        return m && b ? roundName(m.round, m.index, b.bracket.rounds.length) : id;
+      };
       return {
         name: division.name,
         standings: table.map(toPublicStanding),
-        bracket: b ? b.bracket.rounds.flat().map((m) => toPublicMatch(m, b.row.games.find((g) => g.matchId === m.id)?.fieldSlot ?? null, name)) : null,
+        cut: b ? b.seeds.length : null,
+        bracket: b ? matches.map((m) => toPublicMatch(m, b.row.games.find((g) => g.matchId === m.id)?.fieldSlot ?? null, name, label)) : null,
         champion: won ? name(won) : null,
       };
     }),

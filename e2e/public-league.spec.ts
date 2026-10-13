@@ -8,7 +8,7 @@ test.afterAll(() => db.end());
 test.beforeAll(() => db.query('DELETE FROM "RateLimit"')); // the server sees every local run as one IP
 
 async function seedLeague(status: 'published' | 'draft') {
-  const [org, season, division, home, away, field, slot, game, version] = Array.from({ length: 9 }, () => randomUUID());
+  const [org, season, division, home, away, field, slot, game, version, laterSlot, laterGame] = Array.from({ length: 11 }, () => randomUUID());
   const slug = `e2e-league-${org.slice(0, 8)}`;
   await db.query('INSERT INTO "Org" (id, slug, name, "updatedAt") VALUES ($1, $2, $2, now())', [org, slug]);
   await db.query(
@@ -32,6 +32,13 @@ async function seedLeague(status: 'published' | 'draft') {
     [version, org, season, status, randomUUID()],
   );
   await db.query('INSERT INTO "Placement" (id, "orgId", "seasonId", "scheduleVersionId", "gameId", "fieldSlotId") VALUES ($1, $2, $3, $4, $5, $6)', [randomUUID(), org, season, version, game, slot]);
+  // L-032: a second game far in the future with no score, so a team has a next game
+  await db.query(`INSERT INTO "FieldSlot" (id, "orgId", "seasonId", day, start, "fieldId") VALUES ($1, $2, $3, '2099-06-06', '19:00', $4)`, [laterSlot, org, season, field]);
+  await db.query(
+    `INSERT INTO "Game" (id, "orgId", "seasonId", "divisionId", key, round, leg, "homeTeamId", "awayTeamId") VALUES ($1, $2, $3, $4, 'L1:e2e2', 2, 1, $5, $6)`,
+    [laterGame, org, season, division, away, home],
+  );
+  await db.query('INSERT INTO "Placement" (id, "orgId", "seasonId", "scheduleVersionId", "gameId", "fieldSlotId") VALUES ($1, $2, $3, $4, $5, $6)', [randomUUID(), org, season, version, laterGame, laterSlot]);
   await db.query('INSERT INTO "GameResult" (id, "orgId", "gameId", "homeRuns", "awayRuns", "enteredBy") VALUES ($1, $2, $3, 7, 4, $4)', [randomUUID(), org, game, randomUUID()]);
   return { slug, season };
 }
@@ -57,6 +64,17 @@ test('anyone can read the published schedule, standings and score; no contact de
   const ics = await feed.text();
   expect(ics).toContain('DTSTART;TZID=America/Chicago:20260407T180000\r\nDURATION:PT60M\r\nSUMMARY:Herons v Otters\r\nLOCATION:North Diamond');
   expect(ics).not.toMatch(/coach-|example\.test/);
+});
+
+test('on a phone: a team link opens on its next game, days read as words, nothing scrolls sideways (PUB-04..07)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { slug, season } = await seedLeague('published');
+  await page.goto(`/l/${slug}/${season}?team=Otters`);
+  await expect(page.getByText(/Next game: \w{3} Jun 6 · 19:00 · North Diamond · Otters v Herons/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tue Apr 7' })).toBeVisible();
+  await expect(page.getByText(/Schedule updated \w{3} \w{3} \d+ \d\d:\d\d\./)).toBeVisible();
+  await expect(page.getByRole('rowheader', { name: /Herons/ })).toContainText('1st'); // the reason, under the name
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
 test('a season with only a draft, an unknown season and a malformed id are all the same 404', async ({ request }) => {

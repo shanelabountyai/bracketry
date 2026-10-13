@@ -4,7 +4,8 @@ import { db } from '@/core/db';
 import { generateBracket } from '@/app/o/[org]/seasons/bracket-actions';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
-import { blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, teamCalendar, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
+import { blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, roundName, teamCalendar, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
+import { shortDay } from '@/lib/league/days';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
 
@@ -27,7 +28,7 @@ async function publishWithOneMove() {
   const v2 = await db.scheduleVersion.create({ data: { orgId, seasonId, number: 2, seed: 1n, inputHash: 'x', fingerprint: 'y', report: v1.report as object, iterations: 0, accepted: 0, createdBy: ownerId } });
   await db.placement.createMany({ data: v1.placements.map((p) => ({ orgId, seasonId, scheduleVersionId: v2.id, gameId: p.gameId, fieldSlotId: p.id === moved.id ? free.id : p.fieldSlotId })) });
   await publish(SLUG, { versionId: v2.id, reason: 'Rain' });
-  return { home: moved.game.homeTeam.name, from: `${moved.fieldSlot.day} ${moved.fieldSlot.start} · ${moved.fieldSlot.field.name}`, to: free };
+  return { home: moved.game.homeTeam.name, from: `${shortDay(moved.fieldSlot.day)} ${moved.fieldSlot.start} · ${moved.fieldSlot.field.name}`, to: free };
 }
 
 beforeEach(async () => {
@@ -57,7 +58,7 @@ describe('the projections are allowlists (PUB-03, spec §7c)', () => {
     const out = toPublicGame(row, slot);
     expect(Object.keys(out)).toEqual(Object.keys(blankPublicGame()));
     expect(JSON.stringify(out)).not.toMatch(/leak|coach|umpire/);
-    expect(out).toMatchObject({ home: 'A', away: 'B', homeRuns: 3, awayRuns: 1, movedFrom: '2026-10-06 18:00 · F1' });
+    expect(out).toMatchObject({ home: 'A', away: 'B', homeRuns: 3, awayRuns: 1, movedFrom: 'Tue Oct 6 18:00 · F1' }); // PUB-05
     expect(out.division).toBe('Open');
     expect(toPublicGame({ ...row, game: { ...row.game, awayTeam: team('B', 'd2') } }, null).division).toBe('Crossover');
   });
@@ -71,6 +72,12 @@ describe('the projections are allowlists (PUB-03, spec §7c)', () => {
     expect(Object.keys(out)).toEqual(Object.keys(blankPublicMatch()));
     expect(JSON.stringify(out)).not.toMatch(/leak|coach|id-1/);
     expect(out).toMatchObject({ a: '(1) A', b: 'bye', winner: 'A' });
+  });
+
+  it('names a playoff game by its round, counted from the end (PUB-09)', () => {
+    expect([roundName(1, 2, 4), roundName(2, 3, 4), roundName(3, 1, 4), roundName(4, 1, 4), roundName(1, 1, 1)]).toEqual(['Round 1 game 2', 'Quarterfinal 3', 'Semifinal 1', 'Final', 'Final']);
+    const match = { id: 'R2M1', round: 2, index: 1, a: { kind: 'from' as const, matchId: 'R1M1' }, b: { kind: 'from' as const, matchId: 'R1M2' }, winnerTo: null };
+    expect(toPublicMatch(match, null, () => '', (id) => ({ R1M1: 'Semifinal 1', R1M2: 'Semifinal 2', R2M1: 'Final' })[id]!)).toMatchObject({ label: 'Final', a: 'winner of Semifinal 1', b: 'winner of Semifinal 2' });
   });
 });
 
@@ -104,7 +111,8 @@ describe('loadPublicLeague', () => {
     const [d] = league.divisions;
     expect(d!.standings.map((r) => r.team).sort()).toEqual(['T0', 'T1', 'T2', 'T3']);
     expect(d!.standings[0]).toMatchObject({ rank: 1, team: 'T0', wins: 3, losses: 0 });
-    expect(d!.bracket).toMatchObject([{ id: 'R1M1', a: '(1) T0', b: '(2) T1', slot: null, winner: null }]);
+    expect(d!.bracket).toMatchObject([{ id: 'R1M1', label: 'Final', a: '(1) T0', b: '(2) T1', slot: null, winner: null }]);
+    expect(d!.cut).toBe(2); // PUB-08: the bracket was seeded with two teams
   });
 
   it('shows the published version only: a later draft changes nothing', async () => {
@@ -153,7 +161,7 @@ describe('teamCalendar (ICAL-01)', () => {
 
   it('escapes text and folds long lines', () => {
     const game = { ...blankPublicGame(), uid: 'u', day: '2026-10-06', start: '18:00', field: 'North; Diamond, 2', division: 'Open', home: 'A'.repeat(60), away: 'B'.repeat(60) };
-    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], bracket: null, champion: null }] }, game.home)!;
+    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], cut: null, bracket: null, champion: null }] }, game.home)!;
     expect(ics).toContain('LOCATION:North\\; Diamond\\, 2\r\n');
     expect(ics).toContain('DTSTAMP:20261001T120000Z\r\nDTSTART;TZID=America/Chicago:20261006T180000\r\nDURATION:PT75M\r\n');
     expect(ics.split('\r\n').every((l) => l.length <= 74)).toBe(true);
