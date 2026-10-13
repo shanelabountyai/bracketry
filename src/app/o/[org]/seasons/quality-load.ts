@@ -1,5 +1,4 @@
 import type { OrgCtx } from '@/core/authz/guards';
-import { inOrg } from '@/core/authz/guards';
 import { db } from '@/core/db';
 import { slotId } from '@/lib/league/build-input';
 import { scheduleQuality } from '@/lib/league/quality';
@@ -13,16 +12,17 @@ import { loadSeasonInput } from './load-input';
  * given to a playoff game. `stored` is the score saved when the version was made; when the two differ the
  * season's inputs changed in between, and the page says so.
  */
-export async function loadQuality(ctx: OrgCtx, seasonId: string, number?: number) {
+export async function loadQuality(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string, number?: number) {
+  const org = { orgId: ctx.orgId }; // inOrg without a session: the public page has an org and no member (PUB-10)
   const { season, input } = await loadSeasonInput(ctx, seasonId);
-  const versions = await db.scheduleVersion.findMany({ where: { seasonId, ...inOrg(ctx) }, orderBy: { number: 'desc' }, select: { id: true, number: true, status: true, report: true } });
+  const versions = await db.scheduleVersion.findMany({ where: { seasonId, ...org }, orderBy: { number: 'desc' }, select: { id: true, number: true, status: true, report: true } });
   const version = number === undefined ? versions[0] : versions.find((v) => v.number === number);
   if (!version) return { season, versions, version: null };
   const [placements, teams, divisions, fields] = await Promise.all([
-    db.placement.findMany({ where: { scheduleVersionId: version.id, ...inOrg(ctx) }, select: { game: { select: { key: true } }, fieldSlot: { select: { day: true, start: true, fieldId: true } } } }),
-    db.team.findMany({ where: { seasonId, ...inOrg(ctx) }, select: { id: true, name: true } }),
-    db.division.findMany({ where: { seasonId, ...inOrg(ctx) }, select: { id: true, name: true } }),
-    db.field.findMany({ where: inOrg(ctx), select: { id: true, name: true } }),
+    db.placement.findMany({ where: { scheduleVersionId: version.id, ...org }, select: { game: { select: { key: true } }, fieldSlot: { select: { day: true, start: true, fieldId: true } } } }),
+    db.team.findMany({ where: { seasonId, ...org }, select: { id: true, name: true } }),
+    db.division.findMany({ where: { seasonId, ...org }, select: { id: true, name: true } }),
+    db.field.findMany({ where: org, select: { id: true, name: true } }),
   ]);
   const assignment: Assignment = {};
   const slots = new Map<string, Slot>(input.slots.map((s) => [s.id, s]));

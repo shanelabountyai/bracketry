@@ -36,7 +36,7 @@ export default async function League({ params, searchParams }: { params: Promise
   return (
     <main>
       <h1>{league.season}</h1>
-      <p><a href="#schedule">Schedule</a> · <a href="#standings">Standings</a> · <a href="#playoffs">Playoffs</a></p>
+      <p><a href="#schedule">Schedule</a> · <a href="#standings">Standings</a> · <a href="#fairness">Games by time and field</a> · <a href="#playoffs">Playoffs</a></p>
       <p>Schedule updated {shortDay(updated.slice(0, 10))} {updated.slice(11)}.</p>
       {moved.length > 0 && (
         <section aria-label="Changes this week">
@@ -97,6 +97,30 @@ export default async function League({ params, searchParams }: { params: Promise
               ))}
             </tbody>
           </table>
+        ))}
+      </section>
+
+      <section id="fairness">
+        <h2>Games by time and field</h2>
+        <p>How many games each team has at each start time and on each field in the published schedule. Regular-season games only.</p>
+        {league.divisions.map((d) => (
+          <div key={d.name} style={{ overflowX: 'auto' }}>
+            <table>
+              <caption>{d.name}</caption>
+              <thead>
+                <tr><th scope="col">Team</th><th scope="col">Games</th>{league.starts.map((x) => <th key={x} scope="col">{x}</th>)}{league.fields.map((x) => <th key={x} scope="col">{x}</th>)}</tr>
+              </thead>
+              <tbody>
+                {d.fairness.map((r) => (
+                  <tr key={r.team}>
+                    <th scope="row" style={{ textAlign: 'left' }}>{r.team}</th><td>{r.games}</td>
+                    {r.byStart.map((n, i) => <td key={`s${i}`}>{n}</td>)}
+                    {r.byField.map((n, i) => <td key={`f${i}`}>{n}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ))}
       </section>
 

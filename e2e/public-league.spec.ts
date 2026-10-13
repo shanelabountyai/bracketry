@@ -23,8 +23,8 @@ async function seedLeague(status: 'published' | 'draft') {
   await db.query('INSERT INTO "Field" (id, "orgId", name) VALUES ($1, $2, $3)', [field, org, 'North Diamond']);
   await db.query(`INSERT INTO "FieldSlot" (id, "orgId", "seasonId", day, start, "fieldId") VALUES ($1, $2, $3, '2026-04-07', '18:00', $4)`, [slot, org, season, field]);
   await db.query(
-    `INSERT INTO "Game" (id, "orgId", "seasonId", "divisionId", key, round, leg, "homeTeamId", "awayTeamId") VALUES ($1, $2, $3, $4, 'L1:e2e', 1, 1, $5, $6)`,
-    [game, org, season, division, home, away],
+    `INSERT INTO "Game" (id, "orgId", "seasonId", "divisionId", key, round, leg, "homeTeamId", "awayTeamId") VALUES ($1, $2, $3, $4, $7, 1, 1, $5, $6)`,
+    [game, org, season, division, home, away, `L1:${[home, away].sort().join('~')}`], // the engine's key for this pairing, so PUB-10 counts the game
   );
   await db.query(
     `INSERT INTO "ScheduleVersion" (id, "orgId", "seasonId", number, seed, "inputHash", fingerprint, status, report, iterations, accepted, "createdBy", "publishedAt")
@@ -50,7 +50,7 @@ test('anyone can read the published schedule, standings and score; no contact de
   expect(res!.headers()['content-security-policy']).toContain("frame-ancestors 'none'"); // INV-15 on a new public route
   await expect(page.getByRole('heading', { name: 'Spring Softball' })).toBeVisible();
   await expect(page.getByText('18:00 · North Diamond · Herons v Otters (Open) · 7-4')).toBeVisible();
-  await expect(page.getByRole('row', { name: /Herons/ })).toContainText('1'); // the standings table
+  await expect(page.locator('#standings').getByRole('row', { name: /Herons/ })).toContainText('1'); // the standings table
   expect(await page.content()).not.toMatch(/coach-|example\.test/);
 
   await page.getByRole('link', { name: 'Otters' }).click();
@@ -73,7 +73,10 @@ test('on a phone: a team link opens on its next game, days read as words, nothin
   await expect(page.getByText(/Next game: \w{3} Jun 6 · 19:00 · North Diamond · Otters v Herons/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Tue Apr 7' })).toBeVisible();
   await expect(page.getByText(/Schedule updated \w{3} \w{3} \d+ \d\d:\d\d\./)).toBeVisible();
-  await expect(page.getByRole('rowheader', { name: /Herons/ })).toContainText('1st'); // the reason, under the name
+  await expect(page.locator('#standings').getByRole('rowheader', { name: /Herons/ })).toContainText('1st'); // the reason, under the name
+  // L-035 (PUB-10): one game, 18:00 on North Diamond; the 19:00 slot holds a game the engine does not know
+  await expect(page.getByRole('columnheader', { name: 'North Diamond' })).toBeVisible();
+  await expect(page.locator('#fairness').getByRole('row', { name: 'Otters 1 1 0 1' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

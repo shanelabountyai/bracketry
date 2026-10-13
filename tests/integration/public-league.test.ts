@@ -4,7 +4,7 @@ import { db } from '@/core/db';
 import { generateBracket } from '@/app/o/[org]/seasons/bracket-actions';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
-import { blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, roundName, teamCalendar, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
+import { blankPublicFairness, blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, roundName, teamCalendar, toPublicFairness, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
 import { shortDay } from '@/lib/league/days';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
@@ -74,6 +74,13 @@ describe('the projections are allowlists (PUB-03, spec §7c)', () => {
     expect(out).toMatchObject({ a: '(1) A', b: 'bye', winner: 'A' });
   });
 
+  it('a fairness row: counts in column order, and nothing else of the quality row (PUB-10, PUB-11)', () => {
+    const row = { team: 'id-1', division: 'd1', games: 3, home: 2, away: 1, byStart: { '18:00': 1, '19:30': 2 }, byField: { 'f-b': 3, 'f-a': 0 }, shortestRest: 7, longestRest: 14, byes: 3, flags: 5, ...leak };
+    const out = toPublicFairness(row, ['18:00', '19:30'], ['f-a', 'f-b'], () => 'A');
+    expect(Object.keys(out)).toEqual(Object.keys(blankPublicFairness()));
+    expect(out).toEqual({ team: 'A', games: 3, byStart: [1, 2], byField: [0, 3] });
+  });
+
   it('names a playoff game by its round, counted from the end (PUB-09)', () => {
     expect([roundName(1, 2, 4), roundName(2, 3, 4), roundName(3, 1, 4), roundName(4, 1, 4), roundName(1, 1, 1)]).toEqual(['Round 1 game 2', 'Quarterfinal 3', 'Semifinal 1', 'Final', 'Final']);
     const match = { id: 'R2M1', round: 2, index: 1, a: { kind: 'from' as const, matchId: 'R1M1' }, b: { kind: 'from' as const, matchId: 'R1M2' }, winnerTo: null };
@@ -113,6 +120,20 @@ describe('loadPublicLeague', () => {
     expect(d!.standings[0]).toMatchObject({ rank: 1, team: 'T0', wins: 3, losses: 0 });
     expect(d!.bracket).toMatchObject([{ id: 'R1M1', label: 'Final', a: '(1) T0', b: '(2) T1', slot: null, winner: null }]);
     expect(d!.cut).toBe(2); // PUB-08: the bracket was seeded with two teams
+  });
+
+  it('gives each team its games per start time and per field, for the published version (PUB-10)', async () => {
+    await publishFirst();
+    const league = await load();
+    expect(JSON.stringify(league)).not.toMatch(SECRET);
+    expect(league.starts).toEqual(['18:00', '19:30']);
+    expect(league.fields).toEqual(['F1']);
+    const rows = league.divisions[0]!.fairness;
+    expect(rows.map((r) => r.team).sort()).toEqual(['T0', 'T1', 'T2', 'T3']);
+    for (const r of rows) {
+      const mine = league.games.filter((g) => g.home === r.team || g.away === r.team);
+      expect(r).toEqual({ team: r.team, games: 3, byStart: league.starts.map((x) => mine.filter((g) => g.start === x).length), byField: [3] });
+    }
   });
 
   it('shows the published version only: a later draft changes nothing', async () => {
@@ -161,7 +182,7 @@ describe('teamCalendar (ICAL-01)', () => {
 
   it('escapes text and folds long lines', () => {
     const game = { ...blankPublicGame(), uid: 'u', day: '2026-10-06', start: '18:00', field: 'North; Diamond, 2', division: 'Open', home: 'A'.repeat(60), away: 'B'.repeat(60) };
-    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], cut: null, bracket: null, champion: null }] }, game.home)!;
+    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], starts: [], fields: [], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], cut: null, bracket: null, champion: null, fairness: [] }] }, game.home)!;
     expect(ics).toContain('LOCATION:North\\; Diamond\\, 2\r\n');
     expect(ics).toContain('DTSTAMP:20261001T120000Z\r\nDTSTART;TZID=America/Chicago:20261006T180000\r\nDURATION:PT75M\r\n');
     expect(ics.split('\r\n').every((l) => l.length <= 74)).toBe(true);

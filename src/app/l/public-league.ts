@@ -3,8 +3,10 @@ import { now } from '@/core/clock';
 import { db } from '@/core/db';
 import { champion } from '@/lib/league/bracket';
 import { shortDay } from '@/lib/league/days';
+import type { TeamQuality } from '@/lib/league/quality';
 import type { BracketMatch, BracketSlot, StandingsRow } from '@/lib/league/types';
 import { loadBrackets } from '@/app/o/[org]/seasons/bracket-load';
+import { loadQuality } from '@/app/o/[org]/seasons/quality-load';
 import { SCORED } from '@/app/o/[org]/seasons/rainout-load';
 
 // The public league page's data (PUB-01..03, D-33). Built the way the template's share contract asks
@@ -102,6 +104,21 @@ export function toPublicMatch(m: BracketMatch, slot: SlotRow | null, name: (team
   return { ...blankPublicMatch(), id: m.id, label: label(m.id), round: m.round, a: show(m.a), b: show(m.b), slot: slot && slotLabel(slot), aRuns: m.result?.aRuns ?? null, bRuns: m.result?.bRuns ?? null, forfeit: m.result?.forfeit ?? null, winner: m.winner ? name(m.winner) : null };
 }
 
+export interface PublicFairness {
+  team: string;
+  games: number;
+  /** One count per start time of the league's `starts`, in that order. */
+  byStart: number[];
+  /** One count per field of the league's `fields`, in that order. */
+  byField: number[];
+}
+export const blankPublicFairness = (): PublicFairness => ({ team: '', games: 0, byStart: [], byField: [] });
+
+/** PUB-10: a row of `scheduleQuality`, counts copied and nothing counted here (D-4). `fields` are field ids, in column order. */
+export function toPublicFairness(t: TeamQuality, starts: string[], fields: string[], name: (teamId: string) => string): PublicFairness {
+  return { ...blankPublicFairness(), team: name(t.team), games: t.games, byStart: starts.map((s) => t.byStart[s] ?? 0), byField: fields.map((f) => t.byField[f] ?? 0) };
+}
+
 export interface PublicLeague {
   season: string;
   /** IANA name; every day and start time below is a wall time in it (D-6). */
@@ -110,8 +127,11 @@ export interface PublicLeague {
   publishedAt: Date;
   /** Regular-season games of the published version, in day, time and field order. */
   games: PublicGame[];
+  /** The columns of every division's `fairness` rows (PUB-10): start times, and field names. */
+  starts: string[];
+  fields: string[];
   /** `cut` is how many teams the division's bracket was seeded with, null before a bracket (PUB-08). */
-  divisions: { name: string; standings: PublicStanding[]; cut: number | null; bracket: PublicMatch[] | null; champion: string | null }[];
+  divisions: { name: string; standings: PublicStanding[]; cut: number | null; bracket: PublicMatch[] | null; champion: string | null; fairness: PublicFairness[] }[];
 }
 
 /** PUB-02: how long a moved game keeps its mark, counted from the moment the version was published. */
@@ -123,7 +143,7 @@ export const MOVED_MARK_MS = 7 * 86_400_000;
  * touched are the published one and, for the "moved from" mark, the one it replaced.
  */
 export async function loadPublicLeague(orgSlug: string, seasonId: string): Promise<PublicLeague | null> {
-  const version = await db.scheduleVersion.findFirst({ where: { seasonId, status: 'published', org: { slug: orgSlug } }, select: { id: true, orgId: true, publishedAt: true } });
+  const version = await db.scheduleVersion.findFirst({ where: { seasonId, status: 'published', org: { slug: orgSlug } }, select: { id: true, orgId: true, number: true, publishedAt: true } });
   if (!version) return null;
   const org = { orgId: version.orgId };
   const marked = version.publishedAt !== null && now().getTime() - version.publishedAt.getTime() < MOVED_MARK_MS;
@@ -133,7 +153,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
   const slot = { select: { day: true, start: true, field: { select: { name: true } } } };
   const named = { select: { name: true } };
   const side = { select: { name: true, divisionId: true } };
-  const [rows, s] = await Promise.all([
+  const [rows, s, q] = await Promise.all([
     db.placement.findMany({
       where: { scheduleVersionId: { in: [version.id, ...(prev ? [prev.id] : [])] }, ...org },
       select: {
@@ -145,8 +165,11 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
       },
     }),
     loadBrackets(org, seasonId),
+    // ponytail: scores the whole version on every read, with no cache; cache per version id if the page gets slow.
+    loadQuality(org, seasonId, version.number),
   ]);
-  if (!s) return null;
+  if (!s || !q.version) return null;
+  const fieldIds = [...q.quality.fields].sort((a, b) => (q.name(a) < q.name(b) ? -1 : 1));
   const was = new Map(rows.filter((p) => p.scheduleVersionId === prev?.id).map((p) => [p.gameId, p]));
   const order = (g: PublicGame) => `${g.day} ${g.start} ${g.field}`;
   const games = rows
@@ -162,6 +185,8 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
     gameMinutes: s.season.gameMinutes,
     publishedAt: version.publishedAt ?? now(),
     games,
+    starts: q.quality.starts,
+    fields: fieldIds.map(q.name),
     divisions: s.byDivision.map(({ division, rows: table, name, bracket: b }) => {
       const won = b ? champion(b.bracket) : null;
       const matches = b ? b.bracket.rounds.flat() : [];
@@ -175,6 +200,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
         cut: b ? b.seeds.length : null,
         bracket: b ? matches.map((m) => toPublicMatch(m, b.row.games.find((g) => g.matchId === m.id)?.fieldSlot ?? null, name, label)) : null,
         champion: won ? name(won) : null,
+        fairness: q.quality.teams.filter((t) => t.division === division.id).map((t) => toPublicFairness(t, q.quality.starts, fieldIds, q.name)),
       };
     }),
   };

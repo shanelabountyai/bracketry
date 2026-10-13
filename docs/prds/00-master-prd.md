@@ -137,6 +137,8 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **PUB-07** (L-032) The standings fit a phone: the reason sits under the team name, not in a column of its own, and at 390 px wide the page does not scroll sideways.
 - **PUB-08** (L-032) Once a division has a bracket, its standings carry a playoff line under the last qualifying place, with the number of teams the bracket was seeded with. Before a bracket there is no line (D-46).
 - **PUB-09** (L-032) A playoff game is named by its round, counted from the end: Final, Semifinal 1, Quarterfinal 3, and "Round 1 game 2" before that. A side still to be decided reads "winner of Semifinal 1".
+- **PUB-10** (L-035) The public page has a "Games by time and field" table for each division: one row per team with its number of games in the published version, then one column per start time and one per field, each holding that team's count (a 0 is shown as 0). Every number is read from `scheduleQuality`; the page and its loader count nothing themselves (D-4). Regular-season games only, crossover games included.
+- **PUB-11** (L-035) The table is names and counts (PUB-03): it goes through an allowlist projection like the rest of the page, and carries no rest days, bye weeks, cost, violations or ids. A wide table scrolls inside its own box, so the page still does not scroll sideways at 390 px (PUB-07).
 
 ### QUAL — schedule quality
 
