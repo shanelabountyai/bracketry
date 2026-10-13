@@ -1,4 +1,5 @@
 'use server';
+import { isDeepStrictEqual } from 'node:util';
 import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
@@ -32,6 +33,8 @@ type Loaded = NonNullable<Awaited<ReturnType<typeof loadStandings>>>;
  * after it, a change needs a reason. Either way it is logged with the values before and after.
  */
 async function writeConfig(ctx: OrgCtx, s: Loaded, change: Partial<StandingsConfig>, reason: string | undefined, action: string, what: string, before: object, after: object) {
+  // STAND-10: the same values again are not a change: no version, no audit row, and no reason asked for.
+  if (isDeepStrictEqual(before, after)) throw new Refused('Nothing was changed, so nothing was saved.');
   if (s.hasResults && !reason) throw new Refused(`Games have been scored, so give a reason for changing ${what}.`);
   // The version in the where is the guard: two commissioners saving at once cannot both win.
   const r = await db.season.updateMany({

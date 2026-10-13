@@ -1,3 +1,13 @@
+## L-044: a settings save that changes nothing stores nothing (2026-10-13)
+
+**Built.** STAND-10, the open note from L-037. `writeConfig` in `seasons/standings-actions.ts` compares the values before and after with `isDeepStrictEqual` and refuses when they are equal, before it asks for a reason. Both callers (the tiebreak chain and the points and run settings) get it from the one function. No schema change.
+
+**Decided.** Nothing new. A no-change save is shown as a refusal ("Nothing was changed, so nothing was saved."), not as a quiet success.
+
+**Measured.** Gate: lint 0 errors (1 warning, the template's), typecheck clean, 432 tests in 56 files (no new test: assertions added to the two existing change tests in `tests/integration/standings.test.ts`), `foundation:drift` clean against v1.2.1. No e2e spec saves either form, so none was run.
+
+**Left behind.** No browser test saves either form. The message is styled as an error.
+
 ## L-043: a new season refuses a day that is not real (2026-10-13)
 
 **Built.** SEASON-11. `addSeason` calls the same `validDay` every other setup action uses, before the write. Found while writing L-038: `2026-02-30` passed the schema, which only compared the two strings, and reached the database.

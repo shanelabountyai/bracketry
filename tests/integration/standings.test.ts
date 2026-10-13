@@ -111,6 +111,10 @@ describe('saveChain', () => {
     const log = await db.auditEvent.findMany({ where: { action: 'season.tiebreak_changed' }, orderBy: { at: 'asc' } });
     expect(log).toHaveLength(2);
     expect(log[1]!.data).toMatchObject({ version: 3, reason: 'League vote', before: { chain: reordered }, after: { chain: STEPS, onPartialBreak: 'restart' } });
+    // STAND-10: the same chain again stores nothing.
+    expect(await saveChain(SLUG, { seasonId, onPartialBreak: 'restart', ...pos(STEPS) })).toEqual({ error: 'Nothing was changed, so nothing was saved.' });
+    expect((await db.season.findFirstOrThrow()).standingsConfigVersion).toBe(3);
+    expect(await db.auditEvent.count({ where: { action: 'season.tiebreak_changed' } })).toBe(2);
   });
 
   it('refuses a position list that is not a permutation', async () => {
@@ -138,6 +142,10 @@ describe('saveScoring', () => {
     expect((season.standingsConfig as { chain: { id: string }[] }).chain.map((x) => x.id)).toEqual(STEPS); // the chain is untouched
     const log = await db.auditEvent.findMany({ where: { action: 'season.scoring_changed' }, orderBy: { at: 'asc' } });
     expect(log[1]!.data).toMatchObject({ version: 3, reason: 'Board vote', before: { points: { win: 2, tie: 1, loss: 0 }, runDiffCap: 5 }, after: { points: { win: 3, tie: 1, loss: 0 }, forfeitScore: 4, forfeitCountsInRuns: true } });
+    // STAND-10: the same six values again store nothing, with or without a reason.
+    for (const reason of [undefined, 'Again']) expect(await saveScoring(SLUG, { seasonId, ...SET, reason })).toEqual({ error: 'Nothing was changed, so nothing was saved.' });
+    expect((await db.season.findFirstOrThrow()).standingsConfigVersion).toBe(3);
+    expect(await db.auditEvent.count({ where: { action: 'season.scoring_changed' } })).toBe(2);
   });
 
   it('refuses an empty box, a fraction, a cap of 0 and a tie worth more than a win, and stores nothing', async () => {

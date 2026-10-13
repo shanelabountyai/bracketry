@@ -81,6 +81,7 @@ From three read-only reviews in the chairs of the PRD's personas (commissioner, 
 | 42 | ⬜ L-041 | Notices leave the outbox: one confirmed send with a mail key. Blocked while the project is not deployed (D-36) | Commissioner | S | Sonnet | deployment |
 | 43 | ✅ L-042 | The rainout tool sees placed playoff games: a reschedule or a regeneration no longer proposes a draft that publish refuses for a playoff clash (open note from L-034) | Commissioner | S | Opus | L-034, L-017 |
 | 44 | ✅ L-043 | A new season refuses a first or last day that is not a real day (found in L-038) | Commissioner | S | Sonnet | L-012 |
+| 45 | ✅ L-044 | A standings-settings save that changes nothing stores nothing (open note from L-037) | Commissioner | S | Sonnet | L-037 |
 
 Also raised and not made an item: the shared 60-per-15-minutes limit on public reads (a parents' group on one field's wifi shares an address) is a template edit, as in the open note from L-019. Not asked for by any persona: the PRD's P2 list (double elimination, cross-division playoffs, a real solver, umpires, per-field time preferences).
 
