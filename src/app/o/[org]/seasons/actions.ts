@@ -51,6 +51,8 @@ export const addSeason = orgAction(
     gameMinutes: int(15, 480, 'Game length'),
   }).refine((i) => i.lastDay >= i.firstDay, { message: 'The last day cannot be before the first day.', path: ['lastDay'] }),
   async (ctx, i) => {
+    validDay(i.firstDay);
+    validDay(i.lastDay);
     const s = await db.$transaction(async (tx) => {
       const s = await tx.season.create({ data: { ...inOrg(ctx), ...i, rules: DEFAULT_RULES as object, standingsConfig: DEFAULT_STANDINGS as object } });
       await audit(ctx, 'season.created', { targetType: 'season', targetId: s.id }, tx);

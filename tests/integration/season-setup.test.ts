@@ -23,6 +23,8 @@ describe('season setup', () => {
   it('starts with default rules and refuses a backwards window', async () => {
     expect(await db.season.findUniqueOrThrow({ where: { id: seasonId } })).toMatchObject({ status: 'setup', rules: { maxGamesPerTeamPerDay: 1, weights: { rest: 10 } } });
     expect(await addSeason(SLUG, { name: 'X', timezone: 'America/Chicago', firstDay: '2026-10-18', lastDay: '2026-10-05', gameMinutes: 60 })).toEqual({ error: 'The last day cannot be before the first day.' });
+    expect(await addSeason(SLUG, { name: 'X', timezone: 'America/Chicago', firstDay: '2026-02-30', lastDay: '2026-10-05', gameMinutes: 60 })).toEqual({ error: 'Enter a real day as YYYY-MM-DD.' });
+    expect(await db.season.count()).toBe(1);
   });
 
   it('materializes a weekly pattern, and a rerun adds nothing', async () => {
