@@ -39,7 +39,7 @@ The unexplained one is smaller and still open: the first full `npm test` after t
 
 ## What is open
 
-P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) and L-024 (a calendar feed per team) were built after closure; L-026 (crossover games between divisions, counted in each team's own standings) followed; L-025 is not started. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
+P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) and L-024 (a calendar feed per team) were built after closure; L-026 (crossover games between divisions, counted in each team's own standings) followed; L-025 (the LLM benchmark) ran once; its table is in the per-item notes. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
 
 ## Per-item notes
 
@@ -71,3 +71,14 @@ P1: L-023 (what-if standings, clinched and eliminated on points by enumeration u
 **L-024, calendar feed.** Each team has a calendar address a coach can subscribe to. It is the public page's own data in another format: game times are written as the league's local times with the zone named beside them, so nothing converts a time and nothing can be an hour out. A game keeps the same identity when it is rescheduled, so it moves in the calendar instead of showing twice. It was checked by tests reading the file, not in a calendar app (D-39).
 
 **L-026, crossover games.** A season can add rounds of games between divisions: in each round every team of the smaller division plays one team of the other, never the same opponent twice, and the larger division's teams never differ by more than one game. The scheduler needed one change, and it was in the one scoring function: fairness of start times and fields is counted for each team among its own division, so a crossover game counts for both sides, each in its own table. The owner chose that crossover results count in the standings (D-40). The earlier rule, that a result against an outside team is dropped, stayed as the engine's default with its tests untouched; the season loader opts in. Head-to-head still reads only the games among the tied teams. On the sample league, 2 crossover rounds added 12 games (63 in all) and the run took 547 ms.
+
+**L-025, a model against the generator.** The demo season was given to three Claude models, three times each, with the rules in plain words and a request for a schedule as JSON. The same scoring function that gates publishing scored every answer (D-43).
+
+| | Hard violations | Unplaced | Soft cost (three runs) | Dollars a run | Seconds a run |
+|---|---|---|---|---|---|
+| Generator, seed 2027 | 0 | 0 | 122 | 0 | 0.6 |
+| Haiku 5.5 | 0 | 0 | 139, 146, 123 | 0.01 to 0.03 | 63 to 234 |
+| Sonnet 5.5 | 0 | 0 | 142 to 156 | 0.07 to 0.26 | 37 to 186 |
+| Opus 5.5 | 0 | 0 | 102, 100, 100 | 0.61 to 0.86 | 251 to 371 |
+
+What was expected was not what was measured. Every one of the nine answers was a schedule that could be published, and Opus beat the demo's own schedule all three times; two of its answers cost 100, which is the lowest the rest rule allows on this season by counting. The generator's 122 is one seed. Over seeds 1 to 20 it finishes between 100 and 124 and reaches 100 twice, at under a second and no money a seed, so twenty seeds take about twelve seconds against four to six minutes and about 80 cents for one Opus answer. The case for the generator on this evidence is not that a model cannot do it. It is that the generator is free, takes under a second, gives the same schedule for the same seed, and can be run until a counted floor is reached; and that either way the answer has to go through `scoreSchedule` before anyone trusts it. This is one season, one prompt and nine calls ($2.82 in all): it says nothing about a season that cannot fit, pinned games, or a larger league.

@@ -1,0 +1,2100 @@
+{
+ "item": "L-025",
+ "ranAt": "2026-10-13T04:37:07.841Z",
+ "season": "Softball 2026 (2026-09-22 to 2026-11-05): 51 games, 56 slots, 3 blackouts. Prompt: 10344 characters.",
+ "effort": "high",
+ "maxOutputTokens": 64000,
+ "capDollars": 10,
+ "spentDollars": 2.816258,
+ "prompt": "You are scheduling a recreational softball season. Assign each game to one slot.\n\nYour answer is scored by a program. First it counts hard violations and unplaced games; a schedule can only be published with zero of both. Then it adds up a soft cost, where lower is better.\n\nHard rules (each violation counts 1):\n- A slot holds at most one game.\n- A team cannot be in two games with the same day and start time.\n- A team plays at most 1 game(s) on one day.\n- A team cannot play on a day it is blacked out.\n- A pinned game must sit in its pinned slot.\n- Only the slot ids listed below exist.\nA game you leave out is \"unplaced\". That is not a hard violation, but it is counted.\n\nSoft cost (the sum of these):\n- REST, 10 each: for each team, two consecutive games (in date order) on different days fewer than 3 days apart. Tuesday to Thursday is 2 days.\n- LONG_GAP, 3 each: for each team, two consecutive games more than 14 days apart.\n- SLOT_EQUITY, weight 2: inside each division, for each start time, take the team with the most games at that time and the team with the fewest. Cost = (most - fewest - 1) x 2 when that is positive.\n- FIELD_EQUITY, weight 1: the same, for each field.\n- REMATCH, 5 each: the two legs of the same pairing fewer than 14 days apart.\n\nThe season:\n{\"games\":[{\"id\":\"G01\",\"leg\":1,\"home\":\"Giants\",\"away\":\"Hawks\",\"division\":\"A Division\"},{\"id\":\"G02\",\"leg\":1,\"home\":\"Bandits\",\"away\":\"Dukes\",\"division\":\"A Division\"},{\"id\":\"G03\",\"leg\":1,\"home\":\"Icemen\",\"away\":\"Falcons\",\"division\":\"A Division\"},{\"id\":\"G04\",\"leg\":1,\"home\":\"Aces\",\"away\":\"Comets\",\"division\":\"A Division\"},{\"id\":\"G05\",\"leg\":1,\"home\":\"Bandits\",\"away\":\"Eagles\",\"division\":\"A Division\"},{\"id\":\"G06\",\"leg\":1,\"home\":\"Icemen\",\"away\":\"Hawks\",\"division\":\"A Division\"},{\"id\":\"G07\",\"leg\":1,\"home\":\"Aces\",\"away\":\"Dukes\",\"division\":\"A Division\"},{\"id\":\"G08\",\"leg\":1,\"home\":\"Comets\",\"away\":\"Falcons\",\"division\":\"A Division\"},{\"id\":\"G09\",\"leg\":1,\"home\":\"Icemen\",\"away\":\"Giants\",\"division\":\"A Division\"},{\"id\":\"G10\",\"leg\":1,\"home\":\"Aces\",\"away\":\"Eagles\",\"division\":\"A Division\"},{\"id\":\"G11\",\"leg\":1,\"home\":\"Comets\",\"away\":\"Hawks\",\"division\":\"A Division\"},{\"id\":\"G12\",\"leg\":1,\"home\":\"Falcons\",\"away\":\"Dukes\",\"division\":\"A Division\"},{\"id\":\"G13\",\"leg\":1,\"home\":\"Aces\",\"away\":\"Bandits\",\"division\":\"A Division\"},{\"id\":\"G14\",\"leg\":1,\"home\":\"Comets\",\"away\":\"Giants\",\"division\":\"A Division\"},{\"id\":\"G15\",\"leg\":1,\"home\":\"Falcons\",\"away\":\"Eagles\",\"division\":\"A Division\"},{\"id\":\"G16\",\"leg\":1,\"home\":\"Dukes\",\"away\":\"Hawks\",\"division\":\"A Division\"},{\"id\":\"G17\",\"leg\":1,\"home\":\"Comets\",\"away\":\"Icemen\",\"division\":\"A Division\"},{\"id\":\"G18\",\"leg\":1,\"home\":\"Falcons\",\"away\":\"Bandits\",\"division\":\"A Division\"},{\"id\":\"G19\",\"leg\":1,\"home\":\"Dukes\",\"away\":\"Giants\",\"division\":\"A Division\"},{\"id\":\"G20\",\"leg\":1,\"home\":\"Hawks\",\"away\":\"Eagles\",\"division\":\"A Division\"},{\"id\":\"G21\",\"leg\":1,\"home\":\"Falcons\",\"away\":\"Aces\",\"division\":\"A Division\"},{\"id\":\"G22\",\"leg\":1,\"home\":\"Dukes\",\"away\":\"Icemen\",\"division\":\"A Division\"},{\"id\":\"G23\",\"leg\":1,\"home\":\"Hawks\",\"away\":\"Bandits\",\"division\":\"A Division\"},{\"id\":\"G24\",\"leg\":1,\"home\":\"Eagles\",\"away\":\"Giants\",\"division\":\"A Division\"},{\"id\":\"G25\",\"leg\":1,\"home\":\"Dukes\",\"away\":\"Comets\",\"division\":\"A Division\"},{\"id\":\"G26\",\"leg\":1,\"home\":\"Hawks\",\"away\":\"Aces\",\"division\":\"A Division\"},{\"id\":\"G27\",\"leg\":1,\"home\":\"Eagles\",\"away\":\"Icemen\",\"division\":\"A Division\"},{\"id\":\"G28\",\"leg\":1,\"home\":\"Giants\",\"away\":\"Bandits\",\"division\":\"A Division\"},{\"id\":\"G29\",\"leg\":1,\"home\":\"Hawks\",\"away\":\"Falcons\",\"division\":\"A Division\"},{\"id\":\"G30\",\"leg\":1,\"home\":\"Eagles\",\"away\":\"Comets\",\"division\":\"A Division\"},{\"id\":\"G31\",\"leg\":1,\"home\":\"Giants\",\"away\":\"Aces\",\"division\":\"A Division\"},{\"id\":\"G32\",\"leg\":1,\"home\":\"Bandits\",\"away\":\"Icemen\",\"division\":\"A Division\"},{\"id\":\"G33\",\"leg\":1,\"home\":\"Eagles\",\"away\":\"Dukes\",\"division\":\"A Division\"},{\"id\":\"G34\",\"leg\":1,\"home\":\"Giants\",\"away\":\"Falcons\",\"division\":\"A Division\"},{\"id\":\"G35\",\"leg\":1,\"home\":\"Bandits\",\"away\":\"Comets\",\"division\":\"A Division\"},{\"id\":\"G36\",\"leg\":1,\"home\":\"Icemen\",\"away\":\"Aces\",\"division\":\"A Division\"},{\"id\":\"G37\",\"leg\":1,\"home\":\"Owls\",\"away\":\"Kings\",\"division\":\"B Division\"},{\"id\":\"G38\",\"leg\":1,\"home\":\"Lions\",\"away\":\"Jets\",\"division\":\"B Division\"},{\"id\":\"G39\",\"leg\":1,\"home\":\"Mustangs\",\"away\":\"Nomads\",\"division\":\"B Division\"},{\"id\":\"G40\",\"leg\":1,\"home\":\"Kings\",\"away\":\"Lions\",\"division\":\"B Division\"},{\"id\":\"G41\",\"leg\":1,\"home\":\"Mustangs\",\"away\":\"Owls\",\"division\":\"B Division\"},{\"id\":\"G42\",\"leg\":1,\"home\":\"Nomads\",\"away\":\"Jets\",\"division\":\"B Division\"},{\"id\":\"G43\",\"leg\":1,\"home\":\"Mustangs\",\"away\":\"Kings\",\"division\":\"B Division\"},{\"id\":\"G44\",\"leg\":1,\"home\":\"Nomads\",\"away\":\"Lions\",\"division\":\"B Division\"},{\"id\":\"G45\",\"leg\":1,\"home\":\"Jets\",\"away\":\"Owls\",\"division\":\"B Division\"},{\"id\":\"G46\",\"leg\":1,\"home\":\"Kings\",\"away\":\"Nomads\",\"division\":\"B Division\"},{\"id\":\"G47\",\"leg\":1,\"home\":\"Jets\",\"away\":\"Mustangs\",\"division\":\"B Division\"},{\"id\":\"G48\",\"leg\":1,\"home\":\"Owls\",\"away\":\"Lions\",\"division\":\"B Division\"},{\"id\":\"G49\",\"leg\":1,\"home\":\"Jets\",\"away\":\"Kings\",\"division\":\"B Division\"},{\"id\":\"G50\",\"leg\":1,\"home\":\"Owls\",\"away\":\"Nomads\",\"division\":\"B Division\"},{\"id\":\"G51\",\"leg\":1,\"home\":\"Lions\",\"away\":\"Mustangs\",\"division\":\"B Division\"}],\"slots\":[{\"id\":\"S01\",\"day\":\"2026-09-22\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S02\",\"day\":\"2026-09-22\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S03\",\"day\":\"2026-09-22\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S04\",\"day\":\"2026-09-22\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S05\",\"day\":\"2026-09-24\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S06\",\"day\":\"2026-09-24\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S07\",\"day\":\"2026-09-24\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S08\",\"day\":\"2026-09-24\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S09\",\"day\":\"2026-09-29\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S10\",\"day\":\"2026-09-29\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S11\",\"day\":\"2026-09-29\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S12\",\"day\":\"2026-09-29\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S13\",\"day\":\"2026-10-01\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S14\",\"day\":\"2026-10-01\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S15\",\"day\":\"2026-10-01\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S16\",\"day\":\"2026-10-01\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S17\",\"day\":\"2026-10-06\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S18\",\"day\":\"2026-10-06\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S19\",\"day\":\"2026-10-06\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S20\",\"day\":\"2026-10-06\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S21\",\"day\":\"2026-10-08\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S22\",\"day\":\"2026-10-08\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S23\",\"day\":\"2026-10-08\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S24\",\"day\":\"2026-10-08\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S25\",\"day\":\"2026-10-13\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S26\",\"day\":\"2026-10-13\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S27\",\"day\":\"2026-10-13\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S28\",\"day\":\"2026-10-13\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S29\",\"day\":\"2026-10-15\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S30\",\"day\":\"2026-10-15\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S31\",\"day\":\"2026-10-15\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S32\",\"day\":\"2026-10-15\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S33\",\"day\":\"2026-10-20\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S34\",\"day\":\"2026-10-20\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S35\",\"day\":\"2026-10-20\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S36\",\"day\":\"2026-10-20\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S37\",\"day\":\"2026-10-22\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S38\",\"day\":\"2026-10-22\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S39\",\"day\":\"2026-10-22\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S40\",\"day\":\"2026-10-22\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S41\",\"day\":\"2026-10-27\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S42\",\"day\":\"2026-10-27\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S43\",\"day\":\"2026-10-27\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S44\",\"day\":\"2026-10-27\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S45\",\"day\":\"2026-10-29\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S46\",\"day\":\"2026-10-29\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S47\",\"day\":\"2026-10-29\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S48\",\"day\":\"2026-10-29\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S49\",\"day\":\"2026-11-03\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S50\",\"day\":\"2026-11-03\",\"weekday\":\"Tue\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S51\",\"day\":\"2026-11-03\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S52\",\"day\":\"2026-11-03\",\"weekday\":\"Tue\",\"start\":\"19:30\",\"field\":\"North Diamond\"},{\"id\":\"S53\",\"day\":\"2026-11-05\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"South Diamond\"},{\"id\":\"S54\",\"day\":\"2026-11-05\",\"weekday\":\"Thu\",\"start\":\"18:00\",\"field\":\"North Diamond\"},{\"id\":\"S55\",\"day\":\"2026-11-05\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"South Diamond\"},{\"id\":\"S56\",\"day\":\"2026-11-05\",\"weekday\":\"Thu\",\"start\":\"19:30\",\"field\":\"North Diamond\"}],\"blackouts\":[{\"team\":\"Comets\",\"day\":\"2026-09-29\"},{\"team\":\"Comets\",\"day\":\"2026-10-01\"},{\"team\":\"Giants\",\"day\":\"2026-10-06\"}],\"pinned\":[]}\n\nReturn every game you can place as {\"assignments\": [{\"game\": \"G01\", \"slot\": \"S01\"}, ...]}.",
+ "rows": [
+  {
+   "who": "generator",
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 122,
+   "dollars": 0,
+   "seconds": 0.6366058339999999,
+   "note": "seed 2027; soft cost 301 before repair; 4060 iterations, 29 accepted moves"
+  },
+  {
+   "who": "claude-haiku-5-5",
+   "run": 1,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 139,
+   "dollars": 0.0299435,
+   "seconds": 233.835,
+   "note": "end_turn; 58838 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 58838,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 58011
+    }
+   },
+   "answer": [
+    {
+     "game": "G01",
+     "slot": "S09"
+    },
+    {
+     "game": "G02",
+     "slot": "S10"
+    },
+    {
+     "game": "G03",
+     "slot": "S13"
+    },
+    {
+     "game": "G04",
+     "slot": "S05"
+    },
+    {
+     "game": "G05",
+     "slot": "S03"
+    },
+    {
+     "game": "G06",
+     "slot": "S07"
+    },
+    {
+     "game": "G07",
+     "slot": "S35"
+    },
+    {
+     "game": "G08",
+     "slot": "S37"
+    },
+    {
+     "game": "G09",
+     "slot": "S21"
+    },
+    {
+     "game": "G10",
+     "slot": "S14"
+    },
+    {
+     "game": "G11",
+     "slot": "S34"
+    },
+    {
+     "game": "G12",
+     "slot": "S06"
+    },
+    {
+     "game": "G13",
+     "slot": "S41"
+    },
+    {
+     "game": "G14",
+     "slot": "S50"
+    },
+    {
+     "game": "G15",
+     "slot": "S49"
+    },
+    {
+     "game": "G16",
+     "slot": "S22"
+    },
+    {
+     "game": "G17",
+     "slot": "S42"
+    },
+    {
+     "game": "G18",
+     "slot": "S30"
+    },
+    {
+     "game": "G19",
+     "slot": "S25"
+    },
+    {
+     "game": "G20",
+     "slot": "S38"
+    },
+    {
+     "game": "G21",
+     "slot": "S18"
+    },
+    {
+     "game": "G22",
+     "slot": "S29"
+    },
+    {
+     "game": "G23",
+     "slot": "S51"
+    },
+    {
+     "game": "G24",
+     "slot": "S53"
+    },
+    {
+     "game": "G25",
+     "slot": "S02"
+    },
+    {
+     "game": "G26",
+     "slot": "S26"
+    },
+    {
+     "game": "G27",
+     "slot": "S17"
+    },
+    {
+     "game": "G28",
+     "slot": "S45"
+    },
+    {
+     "game": "G29",
+     "slot": "S43"
+    },
+    {
+     "game": "G30",
+     "slot": "S27"
+    },
+    {
+     "game": "G31",
+     "slot": "S01"
+    },
+    {
+     "game": "G32",
+     "slot": "S39"
+    },
+    {
+     "game": "G33",
+     "slot": "S46"
+    },
+    {
+     "game": "G34",
+     "slot": "S33"
+    },
+    {
+     "game": "G35",
+     "slot": "S19"
+    },
+    {
+     "game": "G36",
+     "slot": "S54"
+    },
+    {
+     "game": "G37",
+     "slot": "S04"
+    },
+    {
+     "game": "G38",
+     "slot": "S08"
+    },
+    {
+     "game": "G39",
+     "slot": "S11"
+    },
+    {
+     "game": "G40",
+     "slot": "S12"
+    },
+    {
+     "game": "G41",
+     "slot": "S47"
+    },
+    {
+     "game": "G42",
+     "slot": "S23"
+    },
+    {
+     "game": "G43",
+     "slot": "S20"
+    },
+    {
+     "game": "G44",
+     "slot": "S44"
+    },
+    {
+     "game": "G45",
+     "slot": "S15"
+    },
+    {
+     "game": "G46",
+     "slot": "S31"
+    },
+    {
+     "game": "G47",
+     "slot": "S28"
+    },
+    {
+     "game": "G48",
+     "slot": "S36"
+    },
+    {
+     "game": "G49",
+     "slot": "S40"
+    },
+    {
+     "game": "G50",
+     "slot": "S52"
+    },
+    {
+     "game": "G51",
+     "slot": "S55"
+    }
+   ]
+  },
+  {
+   "who": "claude-haiku-5-5",
+   "run": 2,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 146,
+   "dollars": 0.008121,
+   "seconds": 62.812,
+   "note": "end_turn; 15193 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 15193,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 14265
+    }
+   },
+   "answer": [
+    {
+     "game": "G01",
+     "slot": "S44"
+    },
+    {
+     "game": "G02",
+     "slot": "S12"
+    },
+    {
+     "game": "G03",
+     "slot": "S20"
+    },
+    {
+     "game": "G04",
+     "slot": "S08"
+    },
+    {
+     "game": "G05",
+     "slot": "S43"
+    },
+    {
+     "game": "G06",
+     "slot": "S11"
+    },
+    {
+     "game": "G07",
+     "slot": "S19"
+    },
+    {
+     "game": "G08",
+     "slot": "S49"
+    },
+    {
+     "game": "G09",
+     "slot": "S06"
+    },
+    {
+     "game": "G10",
+     "slot": "S09"
+    },
+    {
+     "game": "G11",
+     "slot": "S35"
+    },
+    {
+     "game": "G12",
+     "slot": "S33"
+    },
+    {
+     "game": "G13",
+     "slot": "S34"
+    },
+    {
+     "game": "G14",
+     "slot": "S53"
+    },
+    {
+     "game": "G15",
+     "slot": "S07"
+    },
+    {
+     "game": "G16",
+     "slot": "S05"
+    },
+    {
+     "game": "G17",
+     "slot": "S03"
+    },
+    {
+     "game": "G18",
+     "slot": "S55"
+    },
+    {
+     "game": "G19",
+     "slot": "S51"
+    },
+    {
+     "game": "G20",
+     "slot": "S17"
+    },
+    {
+     "game": "G21",
+     "slot": "S04"
+    },
+    {
+     "game": "G22",
+     "slot": "S56"
+    },
+    {
+     "game": "G23",
+     "slot": "S52"
+    },
+    {
+     "game": "G24",
+     "slot": "S36"
+    },
+    {
+     "game": "G25",
+     "slot": "S42"
+    },
+    {
+     "game": "G26",
+     "slot": "S54"
+    },
+    {
+     "game": "G27",
+     "slot": "S50"
+    },
+    {
+     "game": "G28",
+     "slot": "S01"
+    },
+    {
+     "game": "G29",
+     "slot": "S26"
+    },
+    {
+     "game": "G30",
+     "slot": "S28"
+    },
+    {
+     "game": "G31",
+     "slot": "S27"
+    },
+    {
+     "game": "G32",
+     "slot": "S25"
+    },
+    {
+     "game": "G33",
+     "slot": "S02"
+    },
+    {
+     "game": "G34",
+     "slot": "S10"
+    },
+    {
+     "game": "G35",
+     "slot": "S18"
+    },
+    {
+     "game": "G36",
+     "slot": "S41"
+    },
+    {
+     "game": "G37",
+     "slot": "S39"
+    },
+    {
+     "game": "G38",
+     "slot": "S15"
+    },
+    {
+     "game": "G39",
+     "slot": "S45"
+    },
+    {
+     "game": "G40",
+     "slot": "S47"
+    },
+    {
+     "game": "G41",
+     "slot": "S31"
+    },
+    {
+     "game": "G42",
+     "slot": "S37"
+    },
+    {
+     "game": "G43",
+     "slot": "S14"
+    },
+    {
+     "game": "G44",
+     "slot": "S29"
+    },
+    {
+     "game": "G45",
+     "slot": "S46"
+    },
+    {
+     "game": "G46",
+     "slot": "S21"
+    },
+    {
+     "game": "G47",
+     "slot": "S23"
+    },
+    {
+     "game": "G48",
+     "slot": "S22"
+    },
+    {
+     "game": "G49",
+     "slot": "S30"
+    },
+    {
+     "game": "G50",
+     "slot": "S13"
+    },
+    {
+     "game": "G51",
+     "slot": "S38"
+    }
+   ]
+  },
+  {
+   "who": "claude-haiku-5-5",
+   "run": 3,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 123,
+   "dollars": 0.0228835,
+   "seconds": 186.653,
+   "note": "end_turn; 44718 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 44718,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 43789
+    }
+   },
+   "answer": [
+    {
+     "game": "G14",
+     "slot": "S01"
+    },
+    {
+     "game": "G13",
+     "slot": "S02"
+    },
+    {
+     "game": "G22",
+     "slot": "S03"
+    },
+    {
+     "game": "G37",
+     "slot": "S04"
+    },
+    {
+     "game": "G11",
+     "slot": "S05"
+    },
+    {
+     "game": "G15",
+     "slot": "S06"
+    },
+    {
+     "game": "G38",
+     "slot": "S07"
+    },
+    {
+     "game": "G39",
+     "slot": "S08"
+    },
+    {
+     "game": "G34",
+     "slot": "S09"
+    },
+    {
+     "game": "G26",
+     "slot": "S10"
+    },
+    {
+     "game": "G40",
+     "slot": "S11"
+    },
+    {
+     "game": "G41",
+     "slot": "S12"
+    },
+    {
+     "game": "G32",
+     "slot": "S13"
+    },
+    {
+     "game": "G33",
+     "slot": "S14"
+    },
+    {
+     "game": "G42",
+     "slot": "S15"
+    },
+    {
+     "game": "G25",
+     "slot": "S17"
+    },
+    {
+     "game": "G18",
+     "slot": "S18"
+    },
+    {
+     "game": "G06",
+     "slot": "S19"
+    },
+    {
+     "game": "G43",
+     "slot": "S20"
+    },
+    {
+     "game": "G19",
+     "slot": "S21"
+    },
+    {
+     "game": "G10",
+     "slot": "S22"
+    },
+    {
+     "game": "G44",
+     "slot": "S23"
+    },
+    {
+     "game": "G45",
+     "slot": "S24"
+    },
+    {
+     "game": "G04",
+     "slot": "S25"
+    },
+    {
+     "game": "G24",
+     "slot": "S26"
+    },
+    {
+     "game": "G16",
+     "slot": "S27"
+    },
+    {
+     "game": "G47",
+     "slot": "S28"
+    },
+    {
+     "game": "G35",
+     "slot": "S29"
+    },
+    {
+     "game": "G03",
+     "slot": "S30"
+    },
+    {
+     "game": "G50",
+     "slot": "S31"
+    },
+    {
+     "game": "G20",
+     "slot": "S33"
+    },
+    {
+     "game": "G31",
+     "slot": "S34"
+    },
+    {
+     "game": "G17",
+     "slot": "S35"
+    },
+    {
+     "game": "G46",
+     "slot": "S36"
+    },
+    {
+     "game": "G23",
+     "slot": "S37"
+    },
+    {
+     "game": "G12",
+     "slot": "S38"
+    },
+    {
+     "game": "G51",
+     "slot": "S39"
+    },
+    {
+     "game": "G36",
+     "slot": "S41"
+    },
+    {
+     "game": "G30",
+     "slot": "S42"
+    },
+    {
+     "game": "G28",
+     "slot": "S43"
+    },
+    {
+     "game": "G49",
+     "slot": "S44"
+    },
+    {
+     "game": "G27",
+     "slot": "S45"
+    },
+    {
+     "game": "G07",
+     "slot": "S46"
+    },
+    {
+     "game": "G29",
+     "slot": "S47"
+    },
+    {
+     "game": "G01",
+     "slot": "S49"
+    },
+    {
+     "game": "G02",
+     "slot": "S50"
+    },
+    {
+     "game": "G21",
+     "slot": "S51"
+    },
+    {
+     "game": "G48",
+     "slot": "S52"
+    },
+    {
+     "game": "G09",
+     "slot": "S53"
+    },
+    {
+     "game": "G05",
+     "slot": "S54"
+    },
+    {
+     "game": "G08",
+     "slot": "S55"
+    }
+   ]
+  },
+  {
+   "who": "claude-sonnet-5-5",
+   "run": 1,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 148,
+   "dollars": 0.14294,
+   "seconds": 92.879,
+   "note": "end_turn; 13245 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 13245,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 12418
+    }
+   },
+   "answer": [
+    {
+     "game": "G01",
+     "slot": "S01"
+    },
+    {
+     "game": "G05",
+     "slot": "S02"
+    },
+    {
+     "game": "G25",
+     "slot": "S03"
+    },
+    {
+     "game": "G36",
+     "slot": "S04"
+    },
+    {
+     "game": "G10",
+     "slot": "S09"
+    },
+    {
+     "game": "G06",
+     "slot": "S10"
+    },
+    {
+     "game": "G02",
+     "slot": "S11"
+    },
+    {
+     "game": "G34",
+     "slot": "S12"
+    },
+    {
+     "game": "G35",
+     "slot": "S17"
+    },
+    {
+     "game": "G03",
+     "slot": "S18"
+    },
+    {
+     "game": "G20",
+     "slot": "S19"
+    },
+    {
+     "game": "G07",
+     "slot": "S20"
+    },
+    {
+     "game": "G21",
+     "slot": "S25"
+    },
+    {
+     "game": "G28",
+     "slot": "S26"
+    },
+    {
+     "game": "G17",
+     "slot": "S27"
+    },
+    {
+     "game": "G33",
+     "slot": "S28"
+    },
+    {
+     "game": "G19",
+     "slot": "S33"
+    },
+    {
+     "game": "G08",
+     "slot": "S34"
+    },
+    {
+     "game": "G23",
+     "slot": "S35"
+    },
+    {
+     "game": "G27",
+     "slot": "S36"
+    },
+    {
+     "game": "G04",
+     "slot": "S41"
+    },
+    {
+     "game": "G16",
+     "slot": "S42"
+    },
+    {
+     "game": "G15",
+     "slot": "S43"
+    },
+    {
+     "game": "G09",
+     "slot": "S44"
+    },
+    {
+     "game": "G22",
+     "slot": "S45"
+    },
+    {
+     "game": "G26",
+     "slot": "S46"
+    },
+    {
+     "game": "G14",
+     "slot": "S47"
+    },
+    {
+     "game": "G18",
+     "slot": "S48"
+    },
+    {
+     "game": "G32",
+     "slot": "S49"
+    },
+    {
+     "game": "G30",
+     "slot": "S50"
+    },
+    {
+     "game": "G29",
+     "slot": "S51"
+    },
+    {
+     "game": "G31",
+     "slot": "S52"
+    },
+    {
+     "game": "G24",
+     "slot": "S53"
+    },
+    {
+     "game": "G12",
+     "slot": "S54"
+    },
+    {
+     "game": "G11",
+     "slot": "S55"
+    },
+    {
+     "game": "G13",
+     "slot": "S56"
+    },
+    {
+     "game": "G37",
+     "slot": "S05"
+    },
+    {
+     "game": "G38",
+     "slot": "S06"
+    },
+    {
+     "game": "G39",
+     "slot": "S07"
+    },
+    {
+     "game": "G41",
+     "slot": "S13"
+    },
+    {
+     "game": "G42",
+     "slot": "S14"
+    },
+    {
+     "game": "G40",
+     "slot": "S15"
+    },
+    {
+     "game": "G43",
+     "slot": "S21"
+    },
+    {
+     "game": "G44",
+     "slot": "S22"
+    },
+    {
+     "game": "G45",
+     "slot": "S23"
+    },
+    {
+     "game": "G46",
+     "slot": "S29"
+    },
+    {
+     "game": "G47",
+     "slot": "S31"
+    },
+    {
+     "game": "G48",
+     "slot": "S32"
+    },
+    {
+     "game": "G51",
+     "slot": "S37"
+    },
+    {
+     "game": "G49",
+     "slot": "S39"
+    },
+    {
+     "game": "G50",
+     "slot": "S40"
+    }
+   ]
+  },
+  {
+   "who": "claude-sonnet-5-5",
+   "run": 2,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 156,
+   "dollars": 0.06857,
+   "seconds": 37.385,
+   "note": "end_turn; 5808 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 5808,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 4981
+    }
+   },
+   "answer": [
+    {
+     "game": "G17",
+     "slot": "S01"
+    },
+    {
+     "game": "G01",
+     "slot": "S02"
+    },
+    {
+     "game": "G18",
+     "slot": "S03"
+    },
+    {
+     "game": "G33",
+     "slot": "S04"
+    },
+    {
+     "game": "G37",
+     "slot": "S05"
+    },
+    {
+     "game": "G38",
+     "slot": "S06"
+    },
+    {
+     "game": "G39",
+     "slot": "S07"
+    },
+    {
+     "game": "G31",
+     "slot": "S09"
+    },
+    {
+     "game": "G32",
+     "slot": "S10"
+    },
+    {
+     "game": "G16",
+     "slot": "S11"
+    },
+    {
+     "game": "G15",
+     "slot": "S12"
+    },
+    {
+     "game": "G40",
+     "slot": "S13"
+    },
+    {
+     "game": "G41",
+     "slot": "S15"
+    },
+    {
+     "game": "G42",
+     "slot": "S16"
+    },
+    {
+     "game": "G35",
+     "slot": "S17"
+    },
+    {
+     "game": "G07",
+     "slot": "S18"
+    },
+    {
+     "game": "G27",
+     "slot": "S19"
+    },
+    {
+     "game": "G29",
+     "slot": "S20"
+    },
+    {
+     "game": "G43",
+     "slot": "S21"
+    },
+    {
+     "game": "G44",
+     "slot": "S22"
+    },
+    {
+     "game": "G45",
+     "slot": "S23"
+    },
+    {
+     "game": "G19",
+     "slot": "S25"
+    },
+    {
+     "game": "G30",
+     "slot": "S26"
+    },
+    {
+     "game": "G21",
+     "slot": "S27"
+    },
+    {
+     "game": "G06",
+     "slot": "S28"
+    },
+    {
+     "game": "G46",
+     "slot": "S29"
+    },
+    {
+     "game": "G47",
+     "slot": "S31"
+    },
+    {
+     "game": "G48",
+     "slot": "S32"
+    },
+    {
+     "game": "G05",
+     "slot": "S33"
+    },
+    {
+     "game": "G34",
+     "slot": "S34"
+    },
+    {
+     "game": "G11",
+     "slot": "S35"
+    },
+    {
+     "game": "G36",
+     "slot": "S36"
+    },
+    {
+     "game": "G49",
+     "slot": "S37"
+    },
+    {
+     "game": "G50",
+     "slot": "S38"
+    },
+    {
+     "game": "G51",
+     "slot": "S39"
+    },
+    {
+     "game": "G12",
+     "slot": "S41"
+    },
+    {
+     "game": "G23",
+     "slot": "S42"
+    },
+    {
+     "game": "G09",
+     "slot": "S43"
+    },
+    {
+     "game": "G04",
+     "slot": "S44"
+    },
+    {
+     "game": "G20",
+     "slot": "S45"
+    },
+    {
+     "game": "G22",
+     "slot": "S46"
+    },
+    {
+     "game": "G13",
+     "slot": "S47"
+    },
+    {
+     "game": "G14",
+     "slot": "S48"
+    },
+    {
+     "game": "G03",
+     "slot": "S49"
+    },
+    {
+     "game": "G10",
+     "slot": "S50"
+    },
+    {
+     "game": "G25",
+     "slot": "S51"
+    },
+    {
+     "game": "G28",
+     "slot": "S52"
+    },
+    {
+     "game": "G26",
+     "slot": "S53"
+    },
+    {
+     "game": "G08",
+     "slot": "S54"
+    },
+    {
+     "game": "G24",
+     "slot": "S55"
+    },
+    {
+     "game": "G02",
+     "slot": "S56"
+    }
+   ]
+  },
+  {
+   "who": "claude-sonnet-5-5",
+   "run": 3,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 142,
+   "dollars": 0.26372,
+   "seconds": 185.966,
+   "note": "end_turn; 25323 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 25323,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 24496
+    }
+   },
+   "answer": [
+    {
+     "game": "G32",
+     "slot": "S01"
+    },
+    {
+     "game": "G11",
+     "slot": "S02"
+    },
+    {
+     "game": "G15",
+     "slot": "S03"
+    },
+    {
+     "game": "G19",
+     "slot": "S04"
+    },
+    {
+     "game": "G02",
+     "slot": "S09"
+    },
+    {
+     "game": "G10",
+     "slot": "S10"
+    },
+    {
+     "game": "G01",
+     "slot": "S11"
+    },
+    {
+     "game": "G03",
+     "slot": "S12"
+    },
+    {
+     "game": "G29",
+     "slot": "S17"
+    },
+    {
+     "game": "G27",
+     "slot": "S18"
+    },
+    {
+     "game": "G07",
+     "slot": "S19"
+    },
+    {
+     "game": "G35",
+     "slot": "S20"
+    },
+    {
+     "game": "G24",
+     "slot": "S21"
+    },
+    {
+     "game": "G16",
+     "slot": "S22"
+    },
+    {
+     "game": "G17",
+     "slot": "S23"
+    },
+    {
+     "game": "G13",
+     "slot": "S24"
+    },
+    {
+     "game": "G04",
+     "slot": "S25"
+    },
+    {
+     "game": "G34",
+     "slot": "S26"
+    },
+    {
+     "game": "G22",
+     "slot": "S27"
+    },
+    {
+     "game": "G20",
+     "slot": "S28"
+    },
+    {
+     "game": "G09",
+     "slot": "S33"
+    },
+    {
+     "game": "G25",
+     "slot": "S34"
+    },
+    {
+     "game": "G05",
+     "slot": "S35"
+    },
+    {
+     "game": "G21",
+     "slot": "S36"
+    },
+    {
+     "game": "G18",
+     "slot": "S37"
+    },
+    {
+     "game": "G31",
+     "slot": "S38"
+    },
+    {
+     "game": "G30",
+     "slot": "S39"
+    },
+    {
+     "game": "G06",
+     "slot": "S40"
+    },
+    {
+     "game": "G08",
+     "slot": "S41"
+    },
+    {
+     "game": "G33",
+     "slot": "S42"
+    },
+    {
+     "game": "G26",
+     "slot": "S43"
+    },
+    {
+     "game": "G28",
+     "slot": "S44"
+    },
+    {
+     "game": "G36",
+     "slot": "S49"
+    },
+    {
+     "game": "G23",
+     "slot": "S50"
+    },
+    {
+     "game": "G14",
+     "slot": "S51"
+    },
+    {
+     "game": "G12",
+     "slot": "S52"
+    },
+    {
+     "game": "G37",
+     "slot": "S05"
+    },
+    {
+     "game": "G38",
+     "slot": "S07"
+    },
+    {
+     "game": "G39",
+     "slot": "S08"
+    },
+    {
+     "game": "G40",
+     "slot": "S14"
+    },
+    {
+     "game": "G42",
+     "slot": "S15"
+    },
+    {
+     "game": "G41",
+     "slot": "S16"
+    },
+    {
+     "game": "G44",
+     "slot": "S29"
+    },
+    {
+     "game": "G45",
+     "slot": "S30"
+    },
+    {
+     "game": "G43",
+     "slot": "S31"
+    },
+    {
+     "game": "G47",
+     "slot": "S45"
+    },
+    {
+     "game": "G46",
+     "slot": "S46"
+    },
+    {
+     "game": "G48",
+     "slot": "S47"
+    },
+    {
+     "game": "G51",
+     "slot": "S54"
+    },
+    {
+     "game": "G50",
+     "slot": "S55"
+    },
+    {
+     "game": "G49",
+     "slot": "S56"
+    }
+   ]
+  },
+  {
+   "who": "claude-opus-5-5",
+   "run": 1,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 102,
+   "dollars": 0.81656,
+   "seconds": 362.521,
+   "note": "end_turn; 39779 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 39779,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 38952
+    }
+   },
+   "answer": [
+    {
+     "game": "G14",
+     "slot": "S01"
+    },
+    {
+     "game": "G32",
+     "slot": "S02"
+    },
+    {
+     "game": "G16",
+     "slot": "S03"
+    },
+    {
+     "game": "G15",
+     "slot": "S04"
+    },
+    {
+     "game": "G21",
+     "slot": "S05"
+    },
+    {
+     "game": "G37",
+     "slot": "S06"
+    },
+    {
+     "game": "G38",
+     "slot": "S07"
+    },
+    {
+     "game": "G39",
+     "slot": "S08"
+    },
+    {
+     "game": "G33",
+     "slot": "S09"
+    },
+    {
+     "game": "G01",
+     "slot": "S10"
+    },
+    {
+     "game": "G18",
+     "slot": "S11"
+    },
+    {
+     "game": "G36",
+     "slot": "S12"
+    },
+    {
+     "game": "G02",
+     "slot": "S16"
+    },
+    {
+     "game": "G13",
+     "slot": "S17"
+    },
+    {
+     "game": "G25",
+     "slot": "S18"
+    },
+    {
+     "game": "G27",
+     "slot": "S19"
+    },
+    {
+     "game": "G29",
+     "slot": "S20"
+    },
+    {
+     "game": "G42",
+     "slot": "S21"
+    },
+    {
+     "game": "G24",
+     "slot": "S22"
+    },
+    {
+     "game": "G43",
+     "slot": "S23"
+    },
+    {
+     "game": "G48",
+     "slot": "S24"
+    },
+    {
+     "game": "G06",
+     "slot": "S25"
+    },
+    {
+     "game": "G08",
+     "slot": "S26"
+    },
+    {
+     "game": "G10",
+     "slot": "S27"
+    },
+    {
+     "game": "G19",
+     "slot": "S28"
+    },
+    {
+     "game": "G41",
+     "slot": "S29"
+    },
+    {
+     "game": "G44",
+     "slot": "S30"
+    },
+    {
+     "game": "G28",
+     "slot": "S31"
+    },
+    {
+     "game": "G49",
+     "slot": "S32"
+    },
+    {
+     "game": "G05",
+     "slot": "S33"
+    },
+    {
+     "game": "G26",
+     "slot": "S34"
+    },
+    {
+     "game": "G34",
+     "slot": "S35"
+    },
+    {
+     "game": "G17",
+     "slot": "S36"
+    },
+    {
+     "game": "G45",
+     "slot": "S37"
+    },
+    {
+     "game": "G07",
+     "slot": "S38"
+    },
+    {
+     "game": "G46",
+     "slot": "S39"
+    },
+    {
+     "game": "G51",
+     "slot": "S40"
+    },
+    {
+     "game": "G09",
+     "slot": "S41"
+    },
+    {
+     "game": "G12",
+     "slot": "S42"
+    },
+    {
+     "game": "G04",
+     "slot": "S43"
+    },
+    {
+     "game": "G23",
+     "slot": "S44"
+    },
+    {
+     "game": "G40",
+     "slot": "S45"
+    },
+    {
+     "game": "G47",
+     "slot": "S46"
+    },
+    {
+     "game": "G50",
+     "slot": "S47"
+    },
+    {
+     "game": "G30",
+     "slot": "S48"
+    },
+    {
+     "game": "G35",
+     "slot": "S49"
+    },
+    {
+     "game": "G20",
+     "slot": "S50"
+    },
+    {
+     "game": "G22",
+     "slot": "S51"
+    },
+    {
+     "game": "G31",
+     "slot": "S52"
+    },
+    {
+     "game": "G03",
+     "slot": "S53"
+    },
+    {
+     "game": "G11",
+     "slot": "S55"
+    }
+   ]
+  },
+  {
+   "who": "claude-opus-5-5",
+   "run": 2,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 100,
+   "dollars": 0.85838,
+   "seconds": 371.418,
+   "note": "end_turn; 41870 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 41870,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 41043
+    }
+   },
+   "answer": [
+    {
+     "game": "G24",
+     "slot": "S01"
+    },
+    {
+     "game": "G16",
+     "slot": "S02"
+    },
+    {
+     "game": "G17",
+     "slot": "S03"
+    },
+    {
+     "game": "G13",
+     "slot": "S04"
+    },
+    {
+     "game": "G39",
+     "slot": "S05"
+    },
+    {
+     "game": "G38",
+     "slot": "S06"
+    },
+    {
+     "game": "G37",
+     "slot": "S07"
+    },
+    {
+     "game": "G08",
+     "slot": "S08"
+    },
+    {
+     "game": "G10",
+     "slot": "S09"
+    },
+    {
+     "game": "G03",
+     "slot": "S10"
+    },
+    {
+     "game": "G01",
+     "slot": "S11"
+    },
+    {
+     "game": "G02",
+     "slot": "S12"
+    },
+    {
+     "game": "G21",
+     "slot": "S13"
+    },
+    {
+     "game": "G33",
+     "slot": "S15"
+    },
+    {
+     "game": "G35",
+     "slot": "S17"
+    },
+    {
+     "game": "G07",
+     "slot": "S18"
+    },
+    {
+     "game": "G29",
+     "slot": "S19"
+    },
+    {
+     "game": "G27",
+     "slot": "S20"
+    },
+    {
+     "game": "G40",
+     "slot": "S21"
+    },
+    {
+     "game": "G41",
+     "slot": "S22"
+    },
+    {
+     "game": "G42",
+     "slot": "S23"
+    },
+    {
+     "game": "G09",
+     "slot": "S24"
+    },
+    {
+     "game": "G32",
+     "slot": "S25"
+    },
+    {
+     "game": "G11",
+     "slot": "S26"
+    },
+    {
+     "game": "G19",
+     "slot": "S27"
+    },
+    {
+     "game": "G15",
+     "slot": "S28"
+    },
+    {
+     "game": "G45",
+     "slot": "S29"
+    },
+    {
+     "game": "G44",
+     "slot": "S30"
+    },
+    {
+     "game": "G43",
+     "slot": "S31"
+    },
+    {
+     "game": "G26",
+     "slot": "S32"
+    },
+    {
+     "game": "G22",
+     "slot": "S33"
+    },
+    {
+     "game": "G34",
+     "slot": "S34"
+    },
+    {
+     "game": "G04",
+     "slot": "S35"
+    },
+    {
+     "game": "G20",
+     "slot": "S36"
+    },
+    {
+     "game": "G47",
+     "slot": "S37"
+    },
+    {
+     "game": "G46",
+     "slot": "S38"
+    },
+    {
+     "game": "G48",
+     "slot": "S39"
+    },
+    {
+     "game": "G28",
+     "slot": "S40"
+    },
+    {
+     "game": "G30",
+     "slot": "S41"
+    },
+    {
+     "game": "G31",
+     "slot": "S42"
+    },
+    {
+     "game": "G18",
+     "slot": "S43"
+    },
+    {
+     "game": "G06",
+     "slot": "S44"
+    },
+    {
+     "game": "G50",
+     "slot": "S45"
+    },
+    {
+     "game": "G49",
+     "slot": "S46"
+    },
+    {
+     "game": "G51",
+     "slot": "S47"
+    },
+    {
+     "game": "G25",
+     "slot": "S48"
+    },
+    {
+     "game": "G23",
+     "slot": "S49"
+    },
+    {
+     "game": "G12",
+     "slot": "S50"
+    },
+    {
+     "game": "G36",
+     "slot": "S51"
+    },
+    {
+     "game": "G14",
+     "slot": "S52"
+    },
+    {
+     "game": "G05",
+     "slot": "S54"
+    }
+   ]
+  },
+  {
+   "who": "claude-opus-5-5",
+   "run": 3,
+   "hard": 0,
+   "unplaced": 0,
+   "softCost": 100,
+   "dollars": 0.60514,
+   "seconds": 251.184,
+   "note": "end_turn; 29208 output tokens",
+   "usage": {
+    "input_tokens": 5245,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 29208,
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "output_tokens_details": {
+     "thinking_tokens": 28381
+    }
+   },
+   "answer": [
+    {
+     "game": "G24",
+     "slot": "S01"
+    },
+    {
+     "game": "G17",
+     "slot": "S02"
+    },
+    {
+     "game": "G16",
+     "slot": "S03"
+    },
+    {
+     "game": "G51",
+     "slot": "S04"
+    },
+    {
+     "game": "G13",
+     "slot": "S05"
+    },
+    {
+     "game": "G49",
+     "slot": "S06"
+    },
+    {
+     "game": "G50",
+     "slot": "S07"
+    },
+    {
+     "game": "G08",
+     "slot": "S08"
+    },
+    {
+     "game": "G02",
+     "slot": "S09"
+    },
+    {
+     "game": "G41",
+     "slot": "S10"
+    },
+    {
+     "game": "G38",
+     "slot": "S11"
+    },
+    {
+     "game": "G10",
+     "slot": "S12"
+    },
+    {
+     "game": "G01",
+     "slot": "S13"
+    },
+    {
+     "game": "G03",
+     "slot": "S14"
+    },
+    {
+     "game": "G46",
+     "slot": "S15"
+    },
+    {
+     "game": "G15",
+     "slot": "S17"
+    },
+    {
+     "game": "G26",
+     "slot": "S18"
+    },
+    {
+     "game": "G32",
+     "slot": "S19"
+    },
+    {
+     "game": "G44",
+     "slot": "S20"
+    },
+    {
+     "game": "G47",
+     "slot": "S21"
+    },
+    {
+     "game": "G37",
+     "slot": "S22"
+    },
+    {
+     "game": "G11",
+     "slot": "S23"
+    },
+    {
+     "game": "G19",
+     "slot": "S24"
+    },
+    {
+     "game": "G04",
+     "slot": "S25"
+    },
+    {
+     "game": "G22",
+     "slot": "S26"
+    },
+    {
+     "game": "G43",
+     "slot": "S27"
+    },
+    {
+     "game": "G34",
+     "slot": "S28"
+    },
+    {
+     "game": "G48",
+     "slot": "S29"
+    },
+    {
+     "game": "G42",
+     "slot": "S30"
+    },
+    {
+     "game": "G28",
+     "slot": "S31"
+    },
+    {
+     "game": "G20",
+     "slot": "S32"
+    },
+    {
+     "game": "G12",
+     "slot": "S33"
+    },
+    {
+     "game": "G23",
+     "slot": "S34"
+    },
+    {
+     "game": "G45",
+     "slot": "S35"
+    },
+    {
+     "game": "G14",
+     "slot": "S36"
+    },
+    {
+     "game": "G40",
+     "slot": "S37"
+    },
+    {
+     "game": "G39",
+     "slot": "S38"
+    },
+    {
+     "game": "G36",
+     "slot": "S39"
+    },
+    {
+     "game": "G33",
+     "slot": "S40"
+    },
+    {
+     "game": "G30",
+     "slot": "S41"
+    },
+    {
+     "game": "G31",
+     "slot": "S42"
+    },
+    {
+     "game": "G18",
+     "slot": "S44"
+    },
+    {
+     "game": "G25",
+     "slot": "S45"
+    },
+    {
+     "game": "G21",
+     "slot": "S47"
+    },
+    {
+     "game": "G06",
+     "slot": "S48"
+    },
+    {
+     "game": "G29",
+     "slot": "S49"
+    },
+    {
+     "game": "G27",
+     "slot": "S51"
+    },
+    {
+     "game": "G35",
+     "slot": "S52"
+    },
+    {
+     "game": "G09",
+     "slot": "S53"
+    },
+    {
+     "game": "G05",
+     "slot": "S54"
+    },
+    {
+     "game": "G07",
+     "slot": "S56"
+    }
+   ]
+  }
+ ]
+}

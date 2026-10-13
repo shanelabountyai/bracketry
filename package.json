@@ -30,6 +30,7 @@
     "db:setup": "tsx scripts/db-setup.ts",
     "new-project": "tsx scripts/new-project.ts",
     "league": "tsx scripts/league.ts",
+    "league:bench": "dotenv -e .env.local -- tsx scripts/league-bench.ts",
     "pending:check": "tsx scripts/pending-check.ts",
     "foundation:drift": "tsx scripts/foundation-drift.ts",
     "foundation:status": "tsx scripts/foundation-status.ts",
@@ -46,6 +47,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22",
     "@types/pg": "^8",
