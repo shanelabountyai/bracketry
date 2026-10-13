@@ -185,3 +185,28 @@ The season loader turns it on for every division. It is passed at the call and i
 **CX-2.** Teams A, B. A 3–1 B; B 5–0 Z; Z 2–1 A. A and B both have 2 points. Head-to-head among the tied teams is the one game A–B: A 2, B 0. A is 1st via head-to-head. B's crossover win is not in that table.
 
 **CX-3.** Teams A, B. Played: B beat Z and B beat Y, so B has 4. Unplayed: A at home to Z. A ends on 0, 1 or 2, always behind B: A is 2 to 2 and B is 1 to 1. With the flag off all three games are dropped, both teams have 0, and each is 1 to 2.
+
+## 10. A withdrawn team (L-036, D-52)
+
+No new function and no new setting. Two rules that already exist carry it:
+
+- **Its unplayed games are forfeits by the withdrawn team (§1).** One result row per game, whatever the game's date. Results it played before it withdrew stand as entered.
+- **It is left out of `teams` (§9).** The loader passes the division's teams without the withdrawn one, with `countCrossover` on as it always is. So every other team's games against it count, played and forfeited alike; the withdrawn team has no row, no rank, no points range and is never seeded; 'tied'-scope steps and `balanced` never see it.
+
+The screen lists a withdrawn team under its division's table with its own played, won, lost, tied and points: the §1 tally of that one team, taken on its own. That line is not a rank.
+
+A bracket seeded before the withdrawal keeps its frozen seeds (D-15). The standings fingerprint changes, so the existing warning shows.
+
+**WD-1.** Teams A, B, C; D withdrew and is outside the list. W 2, T 1, L 0, cap 7, forfeit score 7, `forfeitCountsInRuns` false. Results: D 5–3 A; B 4–2 D; C at home to D, forfeit by D; A 6–1 B; C 2–2 A.
+
+| Team | P | W | L | T | Pts | RF | RA | Diff |
+|---|---|---|---|---|---|---|---|---|
+| A | 3 | 1 | 1 | 1 | 0 + 2 + 1 = 3 | 3 + 6 + 2 = 11 | 5 + 1 + 2 = 8 | −2 + 5 + 0 = +3 |
+| B | 2 | 1 | 1 | 0 | 2 + 0 = 2 | 4 + 1 = 5 | 2 + 6 = 8 | +2 − 5 = −3 |
+| C | 2 | 1 | 0 | 1 | 2 + 1 = 3 | 0 + 2 = 2 | 0 + 2 = 2 | 0 + 0 = 0 |
+
+A and C have 3 points. Head-to-head among the two is the one game C 2–2 A: 1 point each, level. Differential in that game: 0 each, level. Overall differential: A +3, C 0. **A is 1st via `rd-all`, C 2nd, B 3rd on points.** C's forfeit win is worth its 2 points and no runs.
+
+With `forfeitCountsInRuns` true the forfeit reads C 7–0 D: C has RF 9, RA 2, differential +7, and **C is 1st via `rd-all`, A 2nd.**
+
+D on its own: played 3, won 1 (A), lost 2 (B, and the forfeit), 2 points.

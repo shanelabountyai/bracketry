@@ -43,7 +43,7 @@ export default async function Standings({ params, searchParams }: { params: Prom
       <p><Link href={`/o/${ctx.slug}/seasons/${s.season.id}`}>Season setup</Link> · Computed from the latest score of every game; nothing here is stored.</p>
       {supposed > 0 && <p role="status"><strong>What-if table.</strong> {supposed} of the scores below {supposed === 1 ? 'is' : 'are'} hypothetical and not recorded. <Link href={here}>Back to the real standings</Link></p>}
 
-      {s.byDivision.map(({ division, rows, range }) => {
+      {s.byDivision.map(({ division, rows, range, withdrawn }) => {
         const open = [...new Set(rows.filter((r) => r.needsManualResolution).map((r) => r.rank))].map((rank) => rows.filter((r) => r.rank === rank));
         return (
           <section key={division.id}>
@@ -60,6 +60,8 @@ export default async function Standings({ params, searchParams }: { params: Prom
                 ); })}
               </tbody>
             </table>
+            {/* WD-04: a record, not a rank. */}
+            {withdrawn.map((w) => <p key={w.team}>Withdrew: {w.name} ({w.wins}-{w.losses}-{w.ties}, {w.points} points from {w.played} games, forfeits included). Not ranked and not seeded; results against it count.</p>)}
             {open.map((group) => (
               <div key={group[0]!.rank}>
                 <p role="status">{group.map((r) => r.name).join(', ')} are tied and no tiebreaker separates them. The system does not pick.</p>

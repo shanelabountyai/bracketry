@@ -203,3 +203,13 @@ Each S team has 3 games against 3 opponents; each B team has 2. A fourth round w
 **Scoring.** Every hard rule and `REST`, `LONG_GAP` read a crossover game like any other. For `SLOT_EQUITY` and `FIELD_EQUITY` each side of a game is counted in **its own** division: the home team in `division`, the away team in `awayDivision ?? division`. A division's teams are the teams that appear on a side measured in it. `REMATCH` never fires on a crossover game (one leg).
 
 **Fixture.** X = {A, B}, Y = {D, E}. A–B Tue 18:00 F1, D–E Tue 18:00 F2, A–D Thu 19:30 F2 (A hosts), A–E next Tue 19:30 F1 (E hosts). In X at 19:30: A 2, B 0, spread 2, one unit × weight 2 = **2**. In Y at 19:30: D 1, E 1. Fields: A has F1 2 and F2 1, B has F1 1 and F2 0; D has F2 2, E has F2 1 and F1 1: every spread is 1. No rest or gap violation. Soft cost **2**, one `SLOT_EQUITY` naming A and B. Counted by the game's own division instead, X would hold A, B and D and the 19:30 column would read 1, 0, 1: cost 0, which is the wrong answer this fixture exists to catch.
+
+## 10. A withdrawn team's games (L-036, D-52)
+
+No engine function. The app builds the draft, and the engine only scores it.
+
+1. When a team withdraws, its games with no score are **off the schedule**. Its scored games are played games like any other (§7: never displaced, never moved).
+2. The withdrawal draft is the published assignment with the off-schedule keys deleted. `reschedule` and `generateSchedule` are not called. Every other game keeps its slot, checked game by game in the test (D-12).
+3. The input the draft is scored and hashed with has the off-schedule games removed from `games`, so they are not `unplaced` (D-9 is about games the season still owes).
+4. Afterwards the loader drops every game of a withdrawn team that the published version does not hold. Reschedule, "regenerate the rest", the quality table and the public page therefore never see them. The freed slots are ordinary free slots.
+5. The round-robin is not rebuilt. The remaining teams keep their pairings, keys and rounds, and have an open date where the withdrawn team was.

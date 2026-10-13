@@ -240,7 +240,7 @@ describe('teamCalendar (ICAL-01)', () => {
 
   it('escapes text and folds long lines', () => {
     const game = { ...blankPublicGame(), uid: 'u', day: '2026-10-06', start: '18:00', field: 'North; Diamond, 2', division: 'Open', home: 'A'.repeat(60), away: 'B'.repeat(60) };
-    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], playoffGames: [], starts: [], fields: [], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], cut: null, bracket: null, champion: null, fairness: [] }] }, game.home)!;
+    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], playoffGames: [], starts: [], fields: [], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], withdrew: [], cut: null, bracket: null, champion: null, fairness: [] }] }, game.home)!;
     expect(ics).toContain('LOCATION:North\\; Diamond\\, 2\r\n');
     expect(ics).toContain('DTSTAMP:20261001T120000Z\r\nDTSTART;TZID=America/Chicago:20261006T180000\r\nDURATION:PT75M\r\n');
     expect(ics.split('\r\n').every((l) => l.length <= 74)).toBe(true);

@@ -34,7 +34,7 @@ export const publish = orgAction(
 
     // A draft can go stale between proposing and publishing: a slot closed, or a score entered, since it was made.
     const prev = await db.scheduleVersion.findFirst({ where: { seasonId: v.seasonId, status: 'published', ...inOrg(ctx) }, select: { id: true } });
-    const team = { select: { id: true, name: true, contactEmail: true, divisionId: true } };
+    const team = { select: { id: true, name: true, contactEmail: true, divisionId: true, withdrawnAt: true } };
     const rows = await db.placement.findMany({
       where: { scheduleVersionId: { in: [v.id, ...(prev ? [prev.id] : [])] }, ...inOrg(ctx) },
       select: {
@@ -74,12 +74,17 @@ export const publish = orgAction(
     }
 
     // One notice per team, naming each of its games with the old slot and the new one.
+    // WD-03: a game the previous version held and this one does not came off the schedule; a withdrawn team is not told.
     const where = (p: (typeof rows)[number]) => `${p.fieldSlot.day} ${p.fieldSlot.start} at ${p.fieldSlot.field.name}`;
+    const kept = new Set(mine.map((p) => p.gameId));
+    const removed = [...was.values()].filter((p) => !kept.has(p.gameId));
     const notices = new Map<string, { name: string; to: string | null; lines: string[] }>();
-    for (const p of [...changes].sort((a, b) => (where(a) < where(b) ? -1 : 1))) {
+    const sorted = [...changes.map((p) => ({ p, now: where(p) })), ...removed.map((p) => ({ p, now: null }))].sort((a, b) => (where(a.p) < where(b.p) ? -1 : 1));
+    for (const { p, now: at } of sorted) {
       const old = was.get(p.gameId);
-      const line = `${p.game.homeTeam.name} v ${p.game.awayTeam.name}: was ${old ? where(old) : 'not scheduled'}, now ${where(p)}.`;
+      const line = `${p.game.homeTeam.name} v ${p.game.awayTeam.name}: was ${old ? where(old) : 'not scheduled'}, now ${at ?? 'off the schedule'}.`;
       for (const t of [p.game.homeTeam, p.game.awayTeam]) {
+        if (!at && t.withdrawnAt) continue;
         if (!notices.has(t.id)) notices.set(t.id, { name: t.name, to: t.contactEmail, lines: [] });
         notices.get(t.id)!.lines.push(line);
       }
@@ -95,7 +100,7 @@ export const publish = orgAction(
         for (const n of reachable) {
           await enqueue({ channel: 'email', to: n.to!, template: 'notice', orgId: ctx.orgId, data: { subject: `${v.season.name}: schedule change for ${n.name}`, body: `${i.reason}\n\n${n.lines.join('\n')}` } }, tx);
         }
-        await audit(ctx, 'schedule.published', { targetType: 'scheduleVersion', targetId: v.id, data: { number: v.number, reason: i.reason, moved: changes.length, notices: reachable.length } }, tx);
+        await audit(ctx, 'schedule.published', { targetType: 'scheduleVersion', targetId: v.id, data: { number: v.number, reason: i.reason, moved: changes.length, removed: removed.length, notices: reachable.length } }, tx);
       });
     } catch (e) {
       if ((e as { code?: string })?.code === 'P2002') throw new Refused('Another version was published at the same moment. Reload and try again.');
@@ -103,7 +108,8 @@ export const publish = orgAction(
     }
     revalidatePath(seasonPage(ctx.slug, v.seasonId));
     const silent = notices.size - reachable.length;
-    const told = changes.length ? ` ${changes.length} games changed slot; ${reachable.length} team notices queued${silent ? `, ${silent} teams have no contact email` : ''}.` : '';
+    const off = removed.length ? ` and ${removed.length} came off the schedule` : '';
+    const told = changes.length || removed.length ? ` ${changes.length} games changed slot${off}; ${reachable.length} team notices queued${silent ? `, ${silent} teams have no contact email` : ''}.` : '';
     return { notice: `Version ${v.number} is published.${told}` };
   },
 );

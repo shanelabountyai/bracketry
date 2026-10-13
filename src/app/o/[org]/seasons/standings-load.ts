@@ -28,7 +28,8 @@ export async function loadStandings(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string
   const played: GameResult[] = results.map((r) => ({ home: r.game.homeTeamId, away: r.game.awayTeamId, homeRuns: r.homeRuns, awayRuns: r.awayRuns, ...(r.forfeit && { forfeit: r.forfeit }) }));
   const byDivision = divisions.map((d) => {
     const members = teams.filter((t) => t.divisionId === d.id);
-    const ids = members.map((t) => t.id);
+    // Spec 02 §10: a withdrawn team is outside the list, so it has no rank; its opponents' games against it count (§9).
+    const ids = members.filter((t) => !t.withdrawnAt).map((t) => t.id);
     const manualResolutions = resolutions.filter((x) => x.divisionId === d.id).map((x) => x.teamIds as string[]);
     // A crossover game is open in both divisions' arithmetic (D-40); `listed` puts its what-if inputs under the home side only.
     const open = unplayed.filter((g) => ids.includes(g.homeTeamId) || ids.includes(g.awayTeamId)).map((g) => ({ id: g.id, home: g.homeTeamId, away: g.awayTeamId, supposed: whatIf?.[g.id], listed: g.divisionId === d.id }));
@@ -39,7 +40,8 @@ export async function loadStandings(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string
     // D-22: the engine names teams by id; the screen swaps in names. A crossover opponent is in another division.
     const name = (id: string) => teams.find((t) => t.id === id)?.name ?? '?';
     const named = rows.map((r): StandingsRow & { name: string } => ({ ...r, name: name(r.team), note: ids.reduce((n, id) => n.replaceAll(id, name(id)), r.note) }));
-    return { division: d, rows: named, name, open, supposed: supposed.length, range };
+    const withdrawn = members.filter((t) => t.withdrawnAt).map((t) => ({ ...computeStandings([t.id], played, counted)[0]!, name: t.name }));
+    return { division: d, rows: named, withdrawn, name, open, supposed: supposed.length, range };
   });
   return { season, config, hasResults: results.length > 0, byDivision };
 }

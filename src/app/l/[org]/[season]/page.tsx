@@ -109,6 +109,8 @@ export default async function League({ params, searchParams }: { params: Promise
                 </Fragment>
               ))}
             </tbody>
+            {/* WD-05 */}
+            {d.withdrew.length > 0 && <tfoot><tr><td colSpan={10}>Withdrew: {d.withdrew.join(', ')}. Not ranked; results against {d.withdrew.length > 1 ? 'them' : 'it'} count, and games not played are forfeits.</td></tr></tfoot>}
           </table>
         ))}
       </section>

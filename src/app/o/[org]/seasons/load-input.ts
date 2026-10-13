@@ -10,7 +10,7 @@ export async function loadSeasonInput(ctx: Pick<OrgCtx, 'orgId'>, seasonId: stri
   const season = (await db.season.findFirst({ where: { id: seasonId, ...org } })) ?? notFound();
   const [divisions, teams, slotRows, blackouts, pins] = await Promise.all([
     db.division.findMany({ where: { seasonId, ...org }, orderBy: { name: 'asc' } }),
-    db.team.findMany({ where: { seasonId, ...org }, select: { id: true, divisionId: true } }),
+    db.team.findMany({ where: { seasonId, ...org }, select: { id: true, divisionId: true, withdrawnAt: true } }),
     // A slot that holds a playoff game is not season inventory (BRKT-04).
     db.fieldSlot.findMany({ where: { seasonId, status: { in: ['open', 'makeup'] }, bracketGame: null, ...org } }),
     db.blackout.findMany({ where: { team: { seasonId }, ...org }, select: { teamId: true, day: true } }),
@@ -24,5 +24,12 @@ export async function loadSeasonInput(ctx: Pick<OrgCtx, 'orgId'>, seasonId: stri
     pinned: Object.fromEntries(pins.map((p) => [p.game.key, slotId(p.fieldSlot)])),
     crossoverRounds: season.crossoverRounds,
   };
-  return { season, rows, input: buildInput(rows), slotRowIds: new Map(slotRows.map((s) => [slotId(s), s.id])) };
+  const built = buildInput(rows);
+  // Spec 01 §10: a withdrawn team's game that the published version does not hold is off the schedule.
+  const out = teams.filter((t) => t.withdrawnAt).map((t) => t.id);
+  const off = out.length
+    ? new Set((await db.game.findMany({ where: { seasonId, OR: [{ homeTeamId: { in: out } }, { awayTeamId: { in: out } }], placements: { none: { scheduleVersion: { status: 'published' } } }, ...org }, select: { key: true } })).map((g) => g.key))
+    : null;
+  const input = off ? { ...built, games: built.games.filter((g) => !off.has(g.key)) } : built;
+  return { season, rows, input, slotRowIds: new Map(slotRows.map((s) => [slotId(s), s.id])) };
 }

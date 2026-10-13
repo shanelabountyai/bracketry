@@ -175,3 +175,23 @@ describe('crossover results count when the caller opts in (D-40)', () => {
     expect(pointsRankRange(['A', 'B'], [], Array.from({ length: ENUMERATION_LIMIT + 1 }, () => ({ home: 'A', away: 'Z' })), on)).toBeNull();
   });
 });
+
+describe('WD-1 a withdrawn team is outside the list and its unplayed games are forfeits (spec §10)', () => {
+  const results: GameResult[] = [r('D', 5, 'A', 3), r('B', 4, 'D', 2), { home: 'C', away: 'D', homeRuns: 0, awayRuns: 0, forfeit: 'away' }, r('A', 6, 'B', 1), r('C', 2, 'A', 2)];
+  const on = { ...DEFAULT_STANDINGS, countCrossover: true };
+  it('counts the forfeit win in points and not in runs, and ranks the remaining teams only', () => {
+    const rows = computeStandings(['A', 'B', 'C'], results, on);
+    expect(order(rows)).toEqual(['1:A:rd-all', '2:C:rd-all', '3:B:points']);
+    expect(rows[0]).toMatchObject({ played: 3, wins: 1, losses: 1, ties: 1, points: 3, runsFor: 11, runsAgainst: 8, runDiff: 3 });
+    expect(rows[1]).toMatchObject({ played: 2, wins: 1, losses: 0, ties: 1, points: 3, runsFor: 2, runsAgainst: 2, runDiff: 0 });
+    expect(rows[2]).toMatchObject({ played: 2, wins: 1, losses: 1, ties: 0, points: 2, runsFor: 5, runsAgainst: 8, runDiff: -3 });
+  });
+  it('puts C first when forfeits count in runs', () => {
+    const rows = computeStandings(['A', 'B', 'C'], results, { ...on, forfeitCountsInRuns: true });
+    expect(order(rows)).toEqual(['1:C:rd-all', '2:A:rd-all', '3:B:points']);
+    expect(rows[0]).toMatchObject({ runsFor: 9, runsAgainst: 2, runDiff: 7 });
+  });
+  it('gives the withdrawn team its own record when asked for it alone', () => {
+    expect(computeStandings(['D'], results, on)[0]).toMatchObject({ played: 3, wins: 1, losses: 2, ties: 0, points: 2 });
+  });
+});

@@ -140,7 +140,7 @@ export interface PublicLeague {
   starts: string[];
   fields: string[];
   /** `cut` is how many teams the division's bracket was seeded with, null before a bracket (PUB-08). */
-  divisions: { name: string; standings: PublicStanding[]; cut: number | null; bracket: PublicMatch[] | null; champion: string | null; fairness: PublicFairness[] }[];
+  divisions: { name: string; standings: PublicStanding[]; /** WD-05: names only. */ withdrew: string[]; cut: number | null; bracket: PublicMatch[] | null; champion: string | null; fairness: PublicFairness[] }[];
 }
 
 /** PUB-02: how long a moved game keeps its mark, counted from the moment the version was published. */
@@ -205,7 +205,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
     playoffGames,
     starts: q.quality.starts,
     fields: fieldIds.map(q.name),
-    divisions: s.byDivision.map(({ division, rows: table, name, bracket: b }) => {
+    divisions: s.byDivision.map(({ division, rows: table, withdrawn, name, bracket: b }) => {
       const won = b ? champion(b.bracket) : null;
       const matches = b ? b.bracket.rounds.flat() : [];
       const label = (id: string) => {
@@ -215,6 +215,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
       return {
         name: division.name,
         standings: table.map(toPublicStanding),
+        withdrew: withdrawn.map((w) => w.name),
         cut: b ? b.seeds.length : null,
         bracket: b ? matches.map((m) => toPublicMatch(m, b.row.games.find((g) => g.matchId === m.id)?.fieldSlot ?? null, name, label)) : null,
         champion: won ? name(won) : null,

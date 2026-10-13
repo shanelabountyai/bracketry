@@ -1,3 +1,4 @@
+import type { Prisma } from '@/generated/prisma/client';
 import { audit } from '@/core/audit';
 import { inOrg, type OrgCtx } from '@/core/authz/guards';
 import { db } from '@/core/db';
@@ -14,7 +15,7 @@ import type { Assignment, ScheduleInput } from '@/lib/league/types';
 export async function saveDraft(
   ctx: OrgCtx,
   seasonId: string,
-  d: { input: ScheduleInput; assignment: Assignment; slotRowIds: Map<string, string>; seed: number; report: object; iterations: number; accepted: number; action: string },
+  d: { input: ScheduleInput; assignment: Assignment; slotRowIds: Map<string, string>; seed: number; report: object; iterations: number; accepted: number; action: string; also?: (tx: Prisma.TransactionClient) => Promise<unknown> },
 ): Promise<number> {
   const print = fingerprint(d.assignment);
   try {
@@ -43,6 +44,7 @@ export async function saveDraft(
         data: Object.entries(d.assignment).map(([key, slot]) => ({ ...inOrg(ctx), seasonId, scheduleVersionId: v.id, gameId: gameIds.get(key)!, fieldSlotId: d.slotRowIds.get(slot)! })),
       });
       await audit(ctx, d.action, { targetType: 'scheduleVersion', targetId: v.id, data: { seed: d.seed, fingerprint: print } }, tx);
+      await d.also?.(tx); // WD-03: the withdrawal and its draft exist together or not at all
       return v.number;
     });
   } catch (e) {

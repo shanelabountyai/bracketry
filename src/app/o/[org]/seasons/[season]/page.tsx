@@ -10,6 +10,7 @@ import { compareAssignments } from '@/lib/league/compare';
 import { DEFAULT_RULES, isPublishable, type Rules, type ScoreReport } from '@/lib/league/types';
 import { generate } from '../generate-actions';
 import { closeDay, proposeReschedule, regenerateRest } from '../rainout-actions';
+import { withdrawTeam } from '../withdraw-actions';
 import { loadRainout, timeIn } from '../rainout-load';
 import { recordResult, voidResult } from '../result-actions';
 import { resultsOrder } from '../results-order';
@@ -133,6 +134,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
             {teams.filter((t) => t.divisionId === d.id).map((t) => (
               <li key={t.id}>
                 {t.name}
+                {t.withdrawnAt && <> · <strong>withdrew {timeIn(season.timezone, t.withdrawnAt).slice(0, 10)}</strong></>}
                 {/* SEASON-08: said here, at setup, so it is not first learned from the count at publish. */}
                 {!t.contactEmail && <> · <strong>no contact email</strong> (gets no notice when its games move)</>}
                 {edit && (
@@ -143,6 +145,19 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
                       <label>Team <input name="name" required maxLength={120} defaultValue={t.name} /></label>
                       <label>Contact email (internal) <input name="contactEmail" type="email" defaultValue={t.contactEmail ?? ''} /></label>
                       <button type="submit">Save team</button>
+                    </ActionForm>
+                  </details>
+                )}
+                {edit && !t.withdrawnAt && rain.published && (
+                  <details>
+                    <summary>Withdraw</summary>
+                    {/* WD-01 to WD-03 */}
+                    <p>Every game {t.name} has not played is recorded as a forfeit by {t.name}; scores already entered stand. A draft version takes those games off the schedule and moves no other game. {t.name} leaves the standings and cannot be seeded. This cannot be undone here.</p>
+                    <ActionForm action={bind(withdrawTeam)}>
+                      <input type="hidden" name="teamId" value={t.id} />
+                      <label>Reason <input name="reason" required maxLength={400} /></label>
+                      <label><input type="checkbox" name="confirm" required /> Withdraw {t.name} and forfeit its unplayed games</label>
+                      <button type="submit">Withdraw team</button>
                     </ActionForm>
                   </details>
                 )}
@@ -412,6 +427,7 @@ type Stored = ScoreReport & {
   before?: { hardCount: number; unplaced: number; softCost: number };
   reschedule?: { of: number; moved: { game: string; from: string; to: string }[]; unplaced: Record<string, string> };
   regenerated?: { of: number; kept: number; unplayed: number; moved: number };
+  withdrawal?: { of: number; team: string; removed: string[] };
 };
 
 /** What one run measured (D-5): before and after, effort spent, and every remaining violation in a sentence. */
@@ -430,6 +446,7 @@ function VersionReport({ v, teamName, gameLabel, where }: { v: { number: number;
           </ul>
         </>
       )}
+      {r.withdrawal && <p>Version {r.withdrawal.of} without the {r.withdrawal.removed.length} unplayed games of {teamName(r.withdrawal.team)}, which withdrew. No game was placed or moved. Soft cost {r.softCost}.</p>}
       {r.regenerated && <p>Regenerated from version {r.regenerated.of}: {r.regenerated.kept} played games kept, {r.regenerated.moved} of {r.regenerated.unplayed} unplayed games moved.</p>}
       {r.before && (
         <>

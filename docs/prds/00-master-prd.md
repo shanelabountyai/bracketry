@@ -151,6 +151,14 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **PUB-11** (L-035) The table is names and counts (PUB-03): it goes through an allowlist projection like the rest of the page, and carries no rest days, bye weeks, cost, violations or ids. A wide table scrolls inside its own box, so the page still does not scroll sideways at 390 px (PUB-07).
 - **PUB-12** (L-033) A game of the published version whose slot is closed and which has no score reads "postponed" on the public page from the next read, with no new version: in a list above the schedule, on its line in the schedule, and on its line in the bracket for a playoff game. It is not a team's next game (PUB-04). A game with a score is never postponed. The projection carries a yes or no, not the slot's status (D-51). When a reschedule is published the game is in an open slot again and the mark is gone; PUB-02's "moved from" takes over.
 
+### WD — a team withdraws (L-036, D-52)
+
+- **WD-01** A commissioner withdraws a team from a season that has a published version, with a reason and a ticked confirmation. It is refused when the team has already withdrawn, and while the team has a game on or before today, in a slot that is not closed, with no score: those were played or forfeited on the day and are scored first.
+- **WD-02** Every game of the team with no score gets a result row: a forfeit by the withdrawn team, reason "Withdrew: " and the reason given, whatever the game's date (the one exception to SCORE-01's today rule). Results already entered are not touched (D-13).
+- **WD-03** The same action writes a draft version: the published one without those games. No other game changes slot. Pins on those games are removed. Publishing it queues one notice per opponent that names each game that came off; the withdrawn team gets none.
+- **WD-04** A withdrawn team has no rank, is never seeded and is listed under its division's table with its record. Its opponents' results against it count, played or forfeited (spec 02 §10). A withdrawal cannot be undone from the screen.
+- **WD-05** The public page names a division's withdrawn teams under its table. Nothing else about the withdrawal is public.
+
 ### QUAL — schedule quality
 
 - **QUAL-01** A per-team table for any version: games, home and away, games per start time, games per field, shortest and longest rest, byes. The numbers come from the same scoring function as generation (D-4).

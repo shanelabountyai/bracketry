@@ -90,6 +90,7 @@ model Team {
   division     Division      @relation(fields: [divisionId], references: [id], onDelete: Cascade)
   name         String
   contactEmail String? // internal: never in a public projection (PUB-03)
+  withdrawnAt  DateTime?     @db.Timestamptz(6) // WD-01: set once, never cleared (D-52)
   createdAt    DateTime      @default(now()) @db.Timestamptz(6)
   blackouts    Blackout[]
   homeGames    Game[]        @relation("HomeTeam")

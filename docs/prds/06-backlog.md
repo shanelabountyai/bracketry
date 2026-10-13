@@ -73,7 +73,7 @@ From three read-only reviews in the chairs of the PRD's personas (commissioner, 
 | 34 | ✅ L-033 | A rained-out day shows as postponed on the public page as soon as its slots are closed, before a new version is published. Decided: the projection gains a yes or no, not the slot status (D-51) | Coach / parent, commissioner | M | Opus | L-017, L-019 |
 | 35 | ✅ L-034 | Publish looks at playoff games; playoff games are in the calendar feed and get a notice (closes the open notes from L-018 and L-024) | Commissioner, coach / parent | M | Opus | L-018, L-024 |
 | 36 | ✅ L-035 | Public fairness table: each team's count of games per start time and per field, from `scheduleQuality` and nothing else (D-4) | Coach / parent | S | Sonnet | L-020 |
-| 37 | ⬜ L-036 | A team withdraws mid-season: its remaining games are forfeited or removed and the rest rescheduled around it, with played results kept. Needs a spec section and a decision before any code | Commissioner | L | Opus | L-031, L-017 |
+| 37 | ✅ L-036 | A team withdraws mid-season: its unplayed games are forfeits by that team and come off the schedule in a draft that moves no other game; played results stand; it leaves the ranked table (WD-01 to WD-05; D-52; spec 01 §10, spec 02 §10) | Commissioner | L | Opus | L-031, L-017 |
 | 38 | ✅ L-037 | Editor for points, the run-difference cap and forfeit settings (STAND-02; open from L-016) | Commissioner | M | Opus | L-016 |
 | 39 | ✅ L-038 | Copy a season's divisions, teams and fields into a new season | Commissioner | S | Sonnet | L-012 |
 | 40 | ⬜ L-039 | A private preview before a season is public. Reopens D-33: the owner decides first | Commissioner | M | Opus | L-019 |
