@@ -117,6 +117,9 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **STAND-04** Every row shows why it is ranked where it is: "2nd via head-to-head over Cubs".
 - **STAND-05** A tie the chain cannot break shows as a shared rank flagged "needs commissioner decision". The commissioner records the order and the method (coin flip, drawn lots); the entry is append-only. The system never picks.
 - **STAND-06** Head-to-head and other tied-scope steps are skipped while the tied teams have not all played each other the same number of times.
+- **STAND-07** (L-037) A commissioner can edit STAND-02's settings on the standings page: points for a win, a tie and a loss (whole numbers, 0 to 9, a win worth at least a tie and a tie at least a loss), the run differential cap (1 to 99), the forfeit score (0 to 99) and whether a forfeit's runs count. An empty box is refused, never read as 0. A member who cannot change setup sees the values and no form.
+- **STAND-08** (L-037) Before the first score the settings change freely; after it a change needs a reason. Every change is logged with the values before and after, and two commissioners saving at once cannot both win (the same guard and version counter as the tiebreak chain, STAND-03).
+- **STAND-09** (L-037) A change stores nothing but the settings. The table is worked out again on the next read from the scores already entered (STAND-01), and a bracket already generated keeps its seeding and shows BRKT-03's warning if the table under it changed (D-15).
 
 ### BRKT — playoffs
 

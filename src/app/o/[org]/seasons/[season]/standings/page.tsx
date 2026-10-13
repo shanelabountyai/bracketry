@@ -6,7 +6,7 @@ import { can } from '@/core/authz/permissions';
 import { ActionForm } from '@/core/ui/action-form';
 import { ENUMERATION_LIMIT } from '@/lib/league/standings';
 import type { Metric, TiebreakStep } from '@/lib/league/types';
-import { recordTie, saveChain } from '../../standings-actions';
+import { recordTie, saveChain, saveScoring } from '../../standings-actions';
 import { loadStandings, type WhatIf } from '../../standings-load';
 
 export const metadata = { title: 'Standings' };
@@ -112,6 +112,26 @@ export default async function Standings({ params, searchParams }: { params: Prom
         </ActionForm>
       ) : (
         <ol>{s.config.chain.map((step) => <li key={step.id}>{stepLabel(step)}</li>)}</ol>
+      )}
+
+      <h2>Points and runs</h2>
+      <p>What a result is worth in the table. {s.hasResults ? 'Games have been scored, so a change needs a reason, is logged, and re-ranks the table from every score already entered.' : 'No games are scored yet, so this can change freely.'} A bracket already generated keeps its seeding and shows a warning if the table under it changed.</p>
+      {edit ? (
+        <ActionForm action={bind(saveScoring)}>
+          {sid}
+          <label>Points for a win <input name="win" type="number" min={0} max={9} defaultValue={s.config.points.win} required /></label>
+          <label>Points for a tie <input name="tie" type="number" min={0} max={9} defaultValue={s.config.points.tie} required /></label>
+          <label>Points for a loss <input name="loss" type="number" min={0} max={9} defaultValue={s.config.points.loss} required /></label>
+          <label>Most runs one game can add to or take from a run differential <input name="runDiffCap" type="number" min={1} max={99} defaultValue={s.config.runDiffCap} required /></label>
+          <label>Runs the other team wins a forfeit by <input name="forfeitScore" type="number" min={0} max={99} defaultValue={s.config.forfeitScore} required /></label>
+          <label>A forfeit&apos;s runs
+            <select name="forfeitCountsInRuns" defaultValue={s.config.forfeitCountsInRuns ? 'yes' : 'no'}><option value="no">are left out of runs for, runs against and differential</option><option value="yes">count in runs for, runs against and differential</option></select>
+          </label>
+          {s.hasResults && <label>Reason <input name="reason" required maxLength={500} /></label>}
+          <button type="submit">Save points and runs</button>
+        </ActionForm>
+      ) : (
+        <p>Win {s.config.points.win}, tie {s.config.points.tie}, loss {s.config.points.loss}. Run differential is capped at {s.config.runDiffCap} a game. A forfeit is a {s.config.forfeitScore}-0 win{s.config.forfeitCountsInRuns ? ', and its runs count' : ', and its runs are left out'}.</p>
       )}
     </main>
   );

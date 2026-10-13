@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/core/db';
-import { recordTie, saveChain } from '@/app/o/[org]/seasons/standings-actions';
+import { recordTie, saveChain, saveScoring } from '@/app/o/[org]/seasons/standings-actions';
 import { requireOrg } from '@/core/authz/guards';
 import { loadStandings } from '@/app/o/[org]/seasons/standings-load';
 import { resetAuthTables, signInAs } from '../helpers/auth';
@@ -115,5 +115,43 @@ describe('saveChain', () => {
 
   it('refuses a position list that is not a permutation', async () => {
     expect(await saveChain(SLUG, { seasonId, onPartialBreak: 'restart', ...pos(['h2h', 'h2h', 'rd-all', 'ra-all']) })).toEqual({ error: expect.stringContaining('own position') });
+  });
+});
+
+// L-037. A 9-0 B and a forfeit by C at A's field: the defaults give A 4 points, +7 (cap 7; the forfeit's runs are left out).
+describe('saveScoring', () => {
+  const SET = { win: '3', tie: '1', loss: '0', runDiffCap: '5', forfeitScore: '4', forfeitCountsInRuns: 'yes' };
+  const rowA = async () => { const r = (await loadStandings(await requireOrg(SLUG), seasonId))!.byDivision[0]!.rows.find((x) => x.name === 'A')!; return [r.points, r.runsFor, r.runDiff]; };
+
+  it('changes freely before any score, and after one needs a reason, is logged and re-ranks from the same results', async () => {
+    expect(await saveScoring(SLUG, { seasonId, ...SET, win: '2' })).toEqual({ notice: expect.stringContaining('saved') });
+    await play(t.A, t.B, 9, 0);
+    const forfeit = await db.game.create({ data: { orgId, seasonId, divisionId, key: 'ff', round: 2, leg: 1, homeTeamId: t.A, awayTeamId: t.C } });
+    await db.gameResult.create({ data: { orgId, gameId: forfeit.id, homeRuns: 0, awayRuns: 0, forfeit: 'away', enteredBy: crypto.randomUUID() } });
+    expect(await rowA()).toEqual([4, 13, 9]); // 2 + 2 points; 9 + 4 runs; +5 (9 capped at 5) and +4 (the forfeit, counted)
+
+    expect(await saveScoring(SLUG, { seasonId, ...SET })).toEqual({ error: expect.stringContaining('give a reason') });
+    expect(await saveScoring(SLUG, { seasonId, ...SET, reason: 'Board vote' })).toEqual({ notice: expect.stringContaining('saved') });
+    expect(await rowA()).toEqual([6, 13, 9]); // 3 + 3 points; nothing else moved
+    const season = await db.season.findFirstOrThrow();
+    expect(season.standingsConfigVersion).toBe(3);
+    expect((season.standingsConfig as { chain: { id: string }[] }).chain.map((x) => x.id)).toEqual(STEPS); // the chain is untouched
+    const log = await db.auditEvent.findMany({ where: { action: 'season.scoring_changed' }, orderBy: { at: 'asc' } });
+    expect(log[1]!.data).toMatchObject({ version: 3, reason: 'Board vote', before: { points: { win: 2, tie: 1, loss: 0 }, runDiffCap: 5 }, after: { points: { win: 3, tie: 1, loss: 0 }, forfeitScore: 4, forfeitCountsInRuns: true } });
+  });
+
+  it('refuses an empty box, a fraction, a cap of 0 and a tie worth more than a win, and stores nothing', async () => {
+    expect(await saveScoring(SLUG, { seasonId, ...SET, win: '' })).toHaveProperty('error');
+    expect(await saveScoring(SLUG, { seasonId, ...SET, tie: '1.5' })).toHaveProperty('error');
+    expect(await saveScoring(SLUG, { seasonId, ...SET, runDiffCap: '0' })).toHaveProperty('error');
+    expect(await saveScoring(SLUG, { seasonId, ...SET, win: '1', tie: '2' })).toEqual({ error: expect.stringContaining('at least a tie') });
+    expect((await db.season.findFirstOrThrow()).standingsConfigVersion).toBe(1);
+  });
+
+  it('is refused for a member who cannot change setup', async () => {
+    const member = await addMember(orgId, 'member', 'm@example.test');
+    await signInAs(member.id, { mfa: true });
+    await expect(saveScoring(SLUG, { seasonId, ...SET })).rejects.toThrow('Missing permission');
+    expect((await db.season.findFirstOrThrow()).standingsConfigVersion).toBe(1);
   });
 });

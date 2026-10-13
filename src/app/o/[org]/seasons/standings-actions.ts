@@ -4,14 +4,19 @@ import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { audit } from '@/core/audit';
 import { orgAction, ref } from '@/core/authz/action';
-import { inOrg } from '@/core/authz/guards';
+import { inOrg, type OrgCtx } from '@/core/authz/guards';
 import { db } from '@/core/db';
 import { Refused } from '@/core/errors';
+import type { StandingsConfig } from '@/lib/league/types';
 import { loadStandings } from './standings-load';
 
 // Tiebreak chain and commissioner tie decisions (STAND-03, STAND-05; D-13, D-14, D-22). Same permission as setup (D-30).
 // The forms post one `pos_<id>` field per row, so the schemas are loose and the positions are read in the body.
 const PERM = 'org.update' as const;
+const reason = z.string().trim().max(500, 'The reason is at most 500 characters.').optional();
+// An empty box is "not entered", never 0: z.coerce alone reads '' as 0 (SCORE-04).
+const int = (min: number, max: number, what: string) =>
+  z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number(`${what} must be a whole number.`).int(`${what} must be a whole number.`).min(min, `${what} must be at least ${min}.`).max(max, `${what} must be at most ${max}.`));
 
 /** `pos_<id>` fields as a 1..n ordering of exactly `ids`; anything else is refused. */
 function order(input: Record<string, unknown>, ids: readonly string[]): string[] {
@@ -20,27 +25,56 @@ function order(input: Record<string, unknown>, ids: readonly string[]): string[]
   return ids.map((id, i) => [id, at[i]!] as const).sort((a, b) => a[1] - b[1]).map(([id]) => id);
 }
 
+type Loaded = NonNullable<Awaited<ReturnType<typeof loadStandings>>>;
+
+/**
+ * The one write to a season's standings settings (STAND-03, STAND-07). Before the first result they are free to change;
+ * after it, a change needs a reason. Either way it is logged with the values before and after.
+ */
+async function writeConfig(ctx: OrgCtx, s: Loaded, change: Partial<StandingsConfig>, reason: string | undefined, action: string, what: string, before: object, after: object) {
+  if (s.hasResults && !reason) throw new Refused(`Games have been scored, so give a reason for changing ${what}.`);
+  // The version in the where is the guard: two commissioners saving at once cannot both win.
+  const r = await db.season.updateMany({
+    where: { id: s.season.id, standingsConfigVersion: s.season.standingsConfigVersion, ...inOrg(ctx) },
+    data: { standingsConfig: { ...s.config, ...change } as object, standingsConfigVersion: { increment: 1 } },
+  });
+  if (!r.count) throw new Refused('Someone else just changed the standings settings. Reload and try again.');
+  await audit(ctx, action, { targetType: 'season', targetId: s.season.id, data: { version: s.season.standingsConfigVersion + 1, before, after, reason: reason ?? null } });
+}
+
 export const saveChain = orgAction(
   PERM,
-  z.looseObject({ seasonId: ref('season'), onPartialBreak: z.enum(['restart', 'continue']), reason: z.string().trim().max(500, 'The reason is at most 500 characters.').optional() }),
+  z.looseObject({ seasonId: ref('season'), onPartialBreak: z.enum(['restart', 'continue']), reason }),
   async (ctx, { seasonId, onPartialBreak, reason, ...rest }) => {
     const s = (await loadStandings(ctx, seasonId)) ?? notFound();
     const chain = order(rest, s.config.chain.map((x) => x.id)).map((id) => s.config.chain.find((x) => x.id === id)!);
-    // Before the first result the chain is free to change; after it, a change needs a reason and is logged (STAND-03).
-    if (s.hasResults && !reason) throw new Refused('Games have been scored, so give a reason for changing the tiebreakers.');
-    // The version in the where is the guard: two commissioners saving at once cannot both win.
-    const r = await db.season.updateMany({
-      where: { id: seasonId, standingsConfigVersion: s.season.standingsConfigVersion, ...inOrg(ctx) },
-      data: { standingsConfig: { ...s.config, chain, onPartialBreak } as object, standingsConfigVersion: { increment: 1 } },
-    });
-    if (!r.count) throw new Refused('Someone else just changed the tiebreakers. Reload and try again.');
-    await audit(ctx, 'season.tiebreak_changed', {
-      targetType: 'season',
-      targetId: seasonId,
-      data: { version: s.season.standingsConfigVersion + 1, before: { chain: s.config.chain.map((x) => x.id), onPartialBreak: s.config.onPartialBreak }, after: { chain: chain.map((x) => x.id), onPartialBreak }, reason: reason ?? null },
-    });
+    await writeConfig(ctx, s, { chain, onPartialBreak }, reason, 'season.tiebreak_changed', 'the tiebreakers', { chain: s.config.chain.map((x) => x.id), onPartialBreak: s.config.onPartialBreak }, { chain: chain.map((x) => x.id), onPartialBreak });
     revalidatePath(`/o/${ctx.slug}/seasons/${seasonId}/standings`);
     return { notice: 'Tiebreakers saved.' };
+  },
+);
+
+// Points, the run-difference cap and the forfeit settings (STAND-02, STAND-07 to STAND-09; D-48). Nothing is recomputed here: standings are read through the engine (D-13).
+export const saveScoring = orgAction(
+  PERM,
+  z.object({
+    seasonId: ref('season'),
+    win: int(0, 9, 'Points for a win'),
+    tie: int(0, 9, 'Points for a tie'),
+    loss: int(0, 9, 'Points for a loss'),
+    runDiffCap: int(1, 99, 'The run-difference cap'),
+    forfeitScore: int(0, 99, 'The forfeit score'),
+    forfeitCountsInRuns: z.enum(['yes', 'no']),
+    reason,
+  }),
+  async (ctx, { seasonId, win, tie, loss, runDiffCap, forfeitScore, forfeitCountsInRuns, reason }) => {
+    const s = (await loadStandings(ctx, seasonId)) ?? notFound();
+    if (win < tie || tie < loss) throw new Refused('A win must be worth at least a tie, and a tie at least a loss.');
+    const after = { points: { win, tie, loss }, runDiffCap, forfeitScore, forfeitCountsInRuns: forfeitCountsInRuns === 'yes' };
+    const { points, runDiffCap: cap, forfeitScore: score, forfeitCountsInRuns: counts } = s.config;
+    await writeConfig(ctx, s, after, reason, 'season.scoring_changed', 'the points or run settings', { points, runDiffCap: cap, forfeitScore: score, forfeitCountsInRuns: counts }, after);
+    revalidatePath(`/o/${ctx.slug}/seasons/${seasonId}/standings`);
+    return { notice: 'Points and run settings saved. The standings above are worked out again from every score.' };
   },
 );
 

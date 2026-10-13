@@ -54,6 +54,9 @@ test('standings through a three-way tie, a bracket and a champion, then a rainou
   const first = await rank(league.trio[0]!);
   expect([await rank(league.trio[1]!), await rank(league.trio[2]!)]).toEqual([first + 1, first + 2]);
   await expect(page.getByText('needs commissioner decision')).toHaveCount(0);
+  // L-037: the points and run settings are on the page with the season's stored values. Nothing is saved here.
+  await expect(page.getByLabel('Points for a win')).toHaveValue('2');
+  await expect(page.getByLabel('Most runs one game can add')).toHaveValue('7');
 
   // What-if (L-023): the cut line is a query parameter, and nothing typed there is stored.
   await page.getByLabel('Teams that qualify').fill('2');
