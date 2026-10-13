@@ -48,6 +48,7 @@ model Season {
   rules                  Json // Rules (src/lib/league/types.ts)
   standingsConfig        Json // StandingsConfig, without manualResolutions: those are TieResolution rows
   standingsConfigVersion Int               @default(1)
+  crossoverRounds        Int               @default(0) // 0 to 16 (CHECK); rounds of games between every two divisions (D-41)
   createdAt              DateTime          @default(now()) @db.Timestamptz(6)
   divisions              Division[]
   teams                  Team[]
@@ -175,9 +176,9 @@ model Game {
   org        Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
   seasonId   String       @db.Uuid
   season     Season       @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  divisionId String       @db.Uuid
+  divisionId String       @db.Uuid // a crossover game's home team's division (D-41)
   division   Division     @relation(fields: [divisionId], references: [id], onDelete: Cascade)
-  key        String // Pairing.key, `L${leg}:${a}~${b}`
+  key        String // Pairing.key, `L${leg}:${a}~${b}`; a crossover game is `X:${a}~${b}`
   round      Int
   leg        Int // 1 or 2 (CHECK)
   homeTeamId String       @db.Uuid

@@ -153,3 +153,25 @@ describe('WI-1 points range by enumeration (spec 02 §8)', () => {
     expect(pointsRankRange(ABCD, played, many.map((g) => ({ ...g, away: 'Z' })), DEFAULT_STANDINGS)).not.toBeNull();
   });
 });
+
+// D-40. Worked by hand in docs/prds/02-standings-bracket-spec.md §9.
+describe('crossover results count when the caller opts in (D-40)', () => {
+  const on = { ...DEFAULT_STANDINGS, countCrossover: true };
+  it('counts a result against an outside team for the team in the list only', () => {
+    const rows = computeStandings(['A', 'B'], [r('A', 3, 'B', 1), r('Z', 9, 'A', 0)], on);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ team: 'A', played: 2, wins: 1, losses: 1, points: 2, runsFor: 3, runsAgainst: 10, runDiff: -5 });
+    expect(rows[1]).toMatchObject({ team: 'B', played: 1, points: 0, runDiff: -2 });
+  });
+  it('head-to-head still reads only the games among the tied teams', () => {
+    // A and B both finish on 2: A beat B, B beat Z. The crossover win does not enter the head-to-head table.
+    expect(order(computeStandings(['A', 'B'], [r('A', 3, 'B', 1), r('B', 5, 'Z', 0), r('Z', 2, 'A', 1)], on))).toEqual(['1:A:h2h', '2:B:h2h']);
+  });
+  it('the points range counts played and unplayed crossover games, and they count toward the limit', () => {
+    const played = [r('B', 1, 'Z', 0), r('B', 1, 'Y', 0)];
+    const range = (config: typeof on) => pointsRankRange(['A', 'B'], played, [{ home: 'A', away: 'Z' }], config)!.map((x) => `${x.team}:${x.bestRank}-${x.worstRank}`);
+    expect(range(on)).toEqual(['A:2-2', 'B:1-1']);
+    expect(range({ ...on, countCrossover: false })).toEqual(['A:1-2', 'B:1-2']);
+    expect(pointsRankRange(['A', 'B'], [], Array.from({ length: ENUMERATION_LIMIT + 1 }, () => ({ home: 'A', away: 'Z' })), on)).toBeNull();
+  });
+});

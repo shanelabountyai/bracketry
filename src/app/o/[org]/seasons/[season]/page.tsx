@@ -13,7 +13,7 @@ import { closeDay, proposeReschedule, regenerateRest } from '../rainout-actions'
 import { loadRainout } from '../rainout-load';
 import { recordResult } from '../result-actions';
 import { publish, removePin, setPin } from '../version-actions';
-import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setSlotOpen } from '../actions';
+import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setCrossover, setSlotOpen } from '../actions';
 
 export const metadata = { title: 'Season setup' };
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -65,6 +65,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   const author = (id: string) => { const u = [...authors, ...resultAuthors].find((x) => x.id === id); return u?.name ?? u?.email ?? 'a former member'; };
   const rules = { ...DEFAULT_RULES, ...(season.rules as Partial<Rules>) };
   const sid = <input type="hidden" name="seasonId" value={season.id} />;
+  const crossovers = input.games.filter((g) => g.awayDivision).length;
 
   return (
     <main>
@@ -94,6 +95,19 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
           <select name="legs" defaultValue="1" aria-label="Round robin"><option value="1">Single round robin</option><option value="2">Double round robin</option></select>
           <button type="submit">Add division</button>
         </ActionForm>
+      )}
+      {divisions.length > 1 && (
+        <section>
+          <h3>Crossover games</h3>
+          <p>In a crossover round every team of the smaller division plays one team of the other, never the same opponent twice. The games count in each team&apos;s own division standings. This season has {crossovers} crossover {crossovers === 1 ? 'game' : 'games'}.</p>
+          {edit && (
+            <ActionForm action={bind(setCrossover)}>
+              {sid}
+              <label>Crossover rounds <input name="rounds" type="number" min={0} max={16} defaultValue={season.crossoverRounds} required /></label>
+              <button type="submit">Save crossover rounds</button>
+            </ActionForm>
+          )}
+        </section>
       )}
 
       <h2>Fields</h2>

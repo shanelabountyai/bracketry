@@ -175,3 +175,31 @@ The result becomes a new draft schedule version in the app. Reschedule never edi
 ## 8. Performance note
 
 Measured once, on the throwaway reference with a full re-score per candidate, in a cloud container: 12 teams (66 games), 80 slots, 5000 iterations took about 1 s; the 9-team capstone about 0.4 s. That is the basis for running generation inside a server action with the caps in D-17. An incremental scorer would be faster and is not required.
+
+## 9. Crossover games (L-026, D-41)
+
+A season has `crossoverRounds` (0 to 16, default 0). For every two divisions, with each division's teams sorted by id, call the one with fewer teams S (size s) and the other B (size b); on equal sizes the division with the lower id is S.
+
+1. Rounds run r = 0 … min(`crossoverRounds`, b) − 1. No round is added once every opponent has been met.
+2. In round r, S[j] plays B[(j + offset) mod b] for every j, where `offset = r·s + floor(r / p)` and `p = b / gcd(s, b)`.
+3. S[j] hosts when j + r is even; otherwise the B team hosts.
+4. The game's key is `X:${a}~${b}` with a < b by string compare, `leg` 1. `division` is the home team's division and `awayDivision` the away team's.
+5. `round` is `max(1, round((r + 1) · last / (crossoverRounds + 1)))`, where `last` is the highest division round. The draft fills slots in round order, so this spreads crossover rounds through the season instead of stacking them at one end. Nothing scores round order.
+
+**Why the offset.** B is a circle and each round takes the next s seats of it, so after any number of rounds two B teams differ by at most one game. After p rounds the blocks return to where they began (p·s is a multiple of b); the extra `floor(r / p)` then shifts every block by one seat, so S[j] meets a new opponent. Over b rounds the offsets take every value 0 … b − 1 once, which is why no pair meets twice.
+
+**Worked: S = [s0, s1], B = [b0, b1, b2], 3 rounds.** gcd 1, p = 3.
+
+| r | offset | s0 plays | s1 plays | Host |
+|---|---|---|---|---|
+| 0 | 0 | b0 | b1 | s0, then b1 |
+| 1 | 2 | b2 | b0 | b2, then s1 |
+| 2 | 4 | b1 | b2 | s0, then b2 |
+
+Each S team has 3 games against 3 opponents; each B team has 2. A fourth round would repeat a pair, so it is not generated.
+
+**Sample league, 6 and 9 teams, 4 rounds.** gcd 3, p = 3. Offsets 0, 6, 12, 19, that is seats 0–5, 6–2, 3–8, 1–6. Every one of the 6 has 4 games against 4 opponents; the 9 have 2, 3, 3, 3, 3, 3, 3, 2, 2 games (24 games in all).
+
+**Scoring.** Every hard rule and `REST`, `LONG_GAP` read a crossover game like any other. For `SLOT_EQUITY` and `FIELD_EQUITY` each side of a game is counted in **its own** division: the home team in `division`, the away team in `awayDivision ?? division`. A division's teams are the teams that appear on a side measured in it. `REMATCH` never fires on a crossover game (one leg).
+
+**Fixture.** X = {A, B}, Y = {D, E}. A–B Tue 18:00 F1, D–E Tue 18:00 F2, A–D Thu 19:30 F2 (A hosts), A–E next Tue 19:30 F1 (E hosts). In X at 19:30: A 2, B 0, spread 2, one unit × weight 2 = **2**. In Y at 19:30: D 1, E 1. Fields: A has F1 2 and F2 1, B has F1 1 and F2 0; D has F2 2, E has F2 1 and F1 1: every spread is 1. No rest or gap violation. Soft cost **2**, one `SLOT_EQUITY` naming A and B. Counted by the game's own division instead, X would hold A, B and D and the 19:30 column would read 1, 0, 1: cost 0, which is the wrong answer this fixture exists to catch.

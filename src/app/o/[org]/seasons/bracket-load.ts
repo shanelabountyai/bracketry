@@ -35,7 +35,7 @@ export async function loadBrackets(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string)
   if (!s) return null;
   const [brackets, unscored] = await Promise.all([
     db.bracket.findMany({ where: { division: { seasonId }, ...org }, include: { games: { include: { fieldSlot: { include: { field: true } } } } } }),
-    db.placement.findMany({ where: { scheduleVersion: { seasonId, status: 'published' }, game: { results: { none: {} } }, ...org }, select: { game: { select: { divisionId: true } } } }),
+    db.placement.findMany({ where: { scheduleVersion: { seasonId, status: 'published' }, game: { results: { none: {} } }, ...org }, select: { game: { select: { homeTeamId: true, awayTeamId: true } } } }),
   ]);
   const byDivision = s.byDivision.map((d) => {
     const row = brackets.find((b) => b.divisionId === d.division.id);
@@ -43,7 +43,7 @@ export async function loadBrackets(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string)
     return {
       ...d,
       /** Scheduled season games with no score: the standings are not final while this is above zero. */
-      unscored: unscored.filter((p) => p.game.divisionId === d.division.id).length,
+      unscored: unscored.filter((p) => d.rows.some((r) => r.team === p.game.homeTeamId || r.team === p.game.awayTeamId)).length,
       bracket: row && {
         row,
         seeds,

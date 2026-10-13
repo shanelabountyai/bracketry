@@ -50,7 +50,7 @@ const publishFirst = async () => publish(SLUG, { versionId: (await db.scheduleVe
 describe('the projections are allowlists (PUB-03, spec §7c)', () => {
   const leak = { contactEmail: 'coach@example.test', dummyField: 'leak' };
   const slot = { day: '2026-10-06', start: '18:00', field: { name: 'F1', ...leak }, ...leak };
-  const team = (name: string) => ({ name, ...leak });
+  const team = (name: string, divisionId = 'd1') => ({ name, divisionId, ...leak });
 
   it('a game: a contact field or a new column on any row stays out', () => {
     const row = { ...leak, gameId: 'g1', fieldSlot: slot, game: { ...leak, division: team('Open'), homeTeam: team('A'), awayTeam: team('B'), results: [{ homeRuns: 3, awayRuns: 1, forfeit: null, reason: 'umpire', enteredBy: 'x' }] } };
@@ -58,6 +58,8 @@ describe('the projections are allowlists (PUB-03, spec §7c)', () => {
     expect(Object.keys(out)).toEqual(Object.keys(blankPublicGame()));
     expect(JSON.stringify(out)).not.toMatch(/leak|coach|umpire/);
     expect(out).toMatchObject({ home: 'A', away: 'B', homeRuns: 3, awayRuns: 1, movedFrom: '2026-10-06 18:00 · F1' });
+    expect(out.division).toBe('Open');
+    expect(toPublicGame({ ...row, game: { ...row.game, awayTeam: team('B', 'd2') } }, null).division).toBe('Crossover');
   });
 
   it('a standings row and a bracket match', () => {

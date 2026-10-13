@@ -63,6 +63,22 @@ describe('loadStandings', () => {
   });
 });
 
+describe('crossover games (L-026, D-40)', () => {
+  it('a crossover result counts in each team\'s own division, and an open one is in both divisions\' arithmetic', async () => {
+    const rec = await db.division.create({ data: { orgId, seasonId, name: 'Rec', legs: 1 } });
+    const z = (await db.team.create({ data: { orgId, seasonId, divisionId: rec.id, name: 'Z' } })).id;
+    await play(t.A, z, 4, 1); // stored under the home team's division, Open
+    const open = await db.game.create({ data: { orgId, seasonId, divisionId: rec.id, key: 'X:open', round: 2, leg: 1, homeTeamId: z, awayTeamId: t.B } });
+
+    const [openDiv, recDiv] = (await loadStandings(await requireOrg(SLUG), seasonId, {}))!.byDivision;
+    expect(openDiv!.rows[0]).toMatchObject({ name: 'A', played: 1, points: 2, runsFor: 4, runsAgainst: 1 });
+    expect(recDiv!.rows).toEqual([expect.objectContaining({ name: 'Z', played: 1, losses: 1, points: 0, runsAgainst: 4 })]);
+    expect(openDiv!.open).toEqual([expect.objectContaining({ id: open.id, listed: false })]);
+    expect(recDiv!.open).toEqual([expect.objectContaining({ id: open.id, listed: true })]);
+    expect([openDiv!.name(z), recDiv!.name(t.B)]).toEqual(['Z', 'B']);
+  });
+});
+
 describe('recordTie', () => {
   it('flags a cycle as unresolved, takes a decision for exactly that group, and appends corrections', async () => {
     await cycle();

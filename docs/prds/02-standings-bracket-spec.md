@@ -161,3 +161,27 @@ Above `ENUMERATION_LIMIT` (12) unplayed games the function returns null and the 
 | D | 0 to 4 | wins both: D 4, B 2, only A ahead | loses both: everyone is on 0 or more | 2 to 4 |
 
 Cut of 1: A has clinched; B, C and D are eliminated. Cut of 2: A has clinched; nobody else is flagged either way.
+
+## 9. Crossover results (L-026, D-40)
+
+`StandingsConfig.countCrossover` is off by default, and then §1 stands unchanged: a result naming a team outside the list is dropped for both sides (D-22).
+
+With it on:
+
+- **The table (§1)** counts such a result for the team that is in the list: played, win, loss or tie, points, runs for and against, and capped differential. The outside team gets no row.
+- **'all'-scope steps** read that same table, so crossover runs count in overall run differential and runs allowed.
+- **'tied'-scope steps** are unchanged. Their table is built from the games among the tied teams only, and a crossover opponent is never one of them. `balanced` is unchanged for the same reason.
+- **Points range (§8)** takes an unplayed game with one team in the list as a game that moves that team alone (win, tie or loss points), and it counts toward `ENUMERATION_LIMIT`.
+
+The season loader turns it on for every division. It is passed at the call and is not stored with the chain.
+
+**CX-1.** Teams A, B. Results: A 3–1 B; Z 9–0 A (Z is outside). W 2, T 1, L 0, cap 7.
+
+| Team | P | W | L | Pts | RF | RA | Diff |
+|---|---|---|---|---|---|---|---|
+| A | 2 | 1 | 1 | 2 | 3 | 10 | +2 and −7 (capped from −9) = −5 |
+| B | 1 | 0 | 1 | 0 | 1 | 3 | −2 |
+
+**CX-2.** Teams A, B. A 3–1 B; B 5–0 Z; Z 2–1 A. A and B both have 2 points. Head-to-head among the tied teams is the one game A–B: A 2, B 0. A is 1st via head-to-head. B's crossover win is not in that table.
+
+**CX-3.** Teams A, B. Played: B beat Z and B beat Y, so B has 4. Unplayed: A at home to Z. A ends on 0, 1 or 2, always behind B: A is 2 to 2 and B is 1 to 1. With the flag off all three games are dropped, both teams have 0, and each is 1 to 2.

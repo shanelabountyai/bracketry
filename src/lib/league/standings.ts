@@ -9,21 +9,25 @@ interface Placed {
   why: string;
 }
 
-/** §1. Results naming a team outside `teams` are dropped whole, which is also what makes a 'tied'-scope table. */
-function tally(teams: readonly TeamId[], results: readonly GameResult[], config: StandingsConfig): Map<TeamId, Tally> {
+/**
+ * §1. Results naming a team outside `teams` are dropped whole, which is also what makes a 'tied'-scope table.
+ * With `oneSided` (D-40) such a result counts for the team that is in the list.
+ */
+function tally(teams: readonly TeamId[], results: readonly GameResult[], config: StandingsConfig, oneSided = false): Map<TeamId, Tally> {
   const rows = new Map<TeamId, Tally>(
     teams.map((t) => [t, { played: 0, wins: 0, losses: 0, ties: 0, points: 0, runsFor: 0, runsAgainst: 0, runDiff: 0 }]),
   );
   for (const g of results) {
     const home = rows.get(g.home);
     const away = rows.get(g.away);
-    if (!home || !away) continue;
+    if (!(home && away) && !(oneSided && (home || away))) continue;
     const homeRuns = g.forfeit ? (g.forfeit === 'home' ? 0 : config.forfeitScore) : g.homeRuns;
     const awayRuns = g.forfeit ? (g.forfeit === 'away' ? 0 : config.forfeitScore) : g.awayRuns;
     // A forfeit is a win whatever the forfeit score is configured to.
     const homeSign = g.forfeit ? (g.forfeit === 'home' ? -1 : 1) : Math.sign(homeRuns - awayRuns);
     const countsInRuns = !g.forfeit || config.forfeitCountsInRuns;
     for (const [row, sign, mine, theirs] of [[home, homeSign, homeRuns, awayRuns], [away, -homeSign, awayRuns, homeRuns]] as const) {
+      if (!row) continue;
       row.played += 1;
       if (sign > 0) row.wins += 1;
       else if (sign < 0) row.losses += 1;
@@ -95,7 +99,7 @@ export function computeStandings(
   config: StandingsConfig,
 ): StandingsRow[] {
   const ids = [...new Set(teams)].sort();
-  const overall = tally(ids, results, config);
+  const overall = tally(ids, results, config, config.countCrossover);
 
   // §2 resolve(group, step). Only ever called with two or more teams; each inner array shares one rank.
   const resolve = (group: TeamId[], step: number): Placed[][] => {
@@ -167,11 +171,13 @@ export function pointsRankRange(
   const games = unplayed.flatMap((g) => {
     const home = index.get(g.home);
     const away = index.get(g.away);
-    return home === undefined || away === undefined ? [] : [[home, away] as const];
+    // -1 is a team outside the list: with countCrossover the game still moves the one team that is in it (D-40).
+    const sidesIn = (home === undefined ? 0 : 1) + (away === undefined ? 0 : 1);
+    return sidesIn === 2 || (sidesIn === 1 && config.countCrossover) ? [[home ?? -1, away ?? -1] as const] : [];
   });
   if (games.length > ENUMERATION_LIMIT) return null;
 
-  const base = tally(ids, results, config);
+  const base = tally(ids, results, config, config.countCrossover);
   const points = ids.map((t) => base.get(t)!.points);
   const fewestAhead = ids.map(() => ids.length);
   const mostLevelOrAhead = ids.map(() => 0);
@@ -195,11 +201,11 @@ export function pointsRankRange(
       return;
     }
     for (const [home, away] of outcomes) {
-      points[g[0]]! += home;
-      points[g[1]]! += away;
+      if (g[0] >= 0) points[g[0]]! += home;
+      if (g[1] >= 0) points[g[1]]! += away;
       walk(i + 1);
-      points[g[0]]! -= home;
-      points[g[1]]! -= away;
+      if (g[0] >= 0) points[g[0]]! -= home;
+      if (g[1] >= 0) points[g[1]]! -= away;
     }
   };
   walk(0);

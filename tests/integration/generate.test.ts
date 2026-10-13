@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/core/db';
+import { setCrossover } from '@/app/o/[org]/seasons/actions';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
@@ -39,6 +40,28 @@ describe('generate', () => {
     expect(v2!.inputHash).toBe(v1!.inputHash);
     expect(await db.game.count()).toBe(6); // games are created once, not per run
     expect(await db.placement.count({ where: { scheduleVersionId: v1!.id } })).toBe(6 - (v1!.report as { unplaced: string[] }).unplaced.length);
+  });
+
+  it('L-026: one crossover round adds a game for each team of the smaller division, stored under the home team\'s division', async () => {
+    await league(4, 8);
+    const rec = await db.division.create({ data: { orgId, seasonId, name: 'Rec', legs: 1 } });
+    for (const name of ['R0', 'R1']) await db.team.create({ data: { orgId, seasonId, divisionId: rec.id, name } });
+    const before = await generate(SLUG, { seasonId, seed: '7', maxIterations: '300' });
+    expect(before).toMatchObject({ notice: expect.any(String) });
+    expect(await db.game.count()).toBe(7); // 6 + 1, no crossover yet
+
+    await setCrossover(SLUG, { seasonId, rounds: '1' });
+    await generate(SLUG, { seasonId, seed: '7', maxIterations: '300' });
+    const [v1, v2] = await db.scheduleVersion.findMany({ orderBy: { number: 'asc' } });
+    expect(v2!.inputHash).not.toBe(v1!.inputHash); // the earlier draft is stale
+    expect(v2!.report).toMatchObject({ hardCount: 0, unplaced: [] });
+    const crossed = await db.game.findMany({ where: { key: { startsWith: 'X:' } }, include: { homeTeam: true, awayTeam: true } });
+    expect(crossed).toHaveLength(2);
+    for (const g of crossed) {
+      expect(g.homeTeam.divisionId).not.toBe(g.awayTeam.divisionId);
+      expect(g.divisionId).toBe(g.homeTeam.divisionId);
+    }
+    expect(await db.placement.count({ where: { scheduleVersionId: v2!.id } })).toBe(9);
   });
 
   it('a blank seed picks a new one and stores it', async () => {

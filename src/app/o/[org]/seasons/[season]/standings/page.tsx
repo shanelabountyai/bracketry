@@ -79,13 +79,13 @@ export default async function Standings({ params, searchParams }: { params: Prom
       })}
 
       <h2>What if</h2>
-      <p>Clinched and eliminated are worked out on points alone, by trying every win, tie and loss of the games left in a division. Tiebreakers are not applied, so a team that would get in only on a tiebreaker is not marked. They are shown only when {ENUMERATION_LIMIT} or fewer games are left in the division.</p>
+      <p>Clinched and eliminated are worked out on points alone, by trying every win, tie and loss of the games left in a division. Tiebreakers are not applied, so a team that would get in only on a tiebreaker is not marked. They are shown only when {ENUMERATION_LIMIT} or fewer games are left in the division. A crossover game counts for both of its divisions and is listed under the home team&apos;s.</p>
       <form method="get">
         <label>Teams that qualify <input name="n" type="number" min={1} max={16} defaultValue={cut} /></label>
         {s.byDivision.map(({ division, open, range, name }) => (
           <fieldset key={division.id}>
             <legend>{division.name}: {open.length} {open.length === 1 ? 'game' : 'games'} without a score{range ? '' : `, so no clinched or eliminated marks (more than ${ENUMERATION_LIMIT} left)`}</legend>
-            {open.map((g) => (
+            {open.filter((g) => g.listed).map((g) => (
               <p key={g.id}>
                 <label>{name(g.home)} <input name={`h_${g.id}`} type="number" min={0} max={99} defaultValue={g.supposed?.homeRuns} /></label>
                 {' '}<label>{name(g.away)} <input name={`a_${g.id}`} type="number" min={0} max={99} defaultValue={g.supposed?.awayRuns} /></label>

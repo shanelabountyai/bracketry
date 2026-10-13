@@ -44,3 +44,43 @@ describe('capRefusal (D-17)', () => {
     expect(capRefusal([div('d1', 16, 2)], 200)).toBeNull();
   });
 });
+
+// D-41. Worked by hand in docs/prds/01-generator-spec.md §9.
+describe('crossover games (DBL-01)', () => {
+  const x = (divisions: ReturnType<typeof div>[], n: number) => buildInput({ ...rows(divisions), crossoverRounds: n }).games.filter((g) => g.key.startsWith('X:'));
+  const small = [div('d1', 2), div('d2', 3)];
+  it('pairs every team of the smaller division once a round, with no opponent twice and the host alternating', () => {
+    expect(x(small, 3).map((g) => `${g.home}>${g.away}`)).toEqual([
+      'd1-t00>d2-t00', 'd2-t01>d1-t01',
+      'd2-t02>d1-t00', 'd1-t01>d2-t00',
+      'd1-t00>d2-t01', 'd2-t02>d1-t01',
+    ]);
+  });
+  it('keys the game by its two teams and names each side\'s own division', () => {
+    expect(x(small, 1)).toEqual([
+      { key: 'X:d1-t00~d2-t00', round: 2, leg: 1, home: 'd1-t00', away: 'd2-t00', division: 'd1', awayDivision: 'd2' },
+      { key: 'X:d1-t01~d2-t01', round: 2, leg: 1, home: 'd2-t01', away: 'd1-t01', division: 'd2', awayDivision: 'd1' },
+    ]);
+  });
+  it('stops when every opponent has been met, and 0 rounds changes nothing', () => {
+    expect(x(small, 9)).toHaveLength(6);
+    expect(x(small, 0)).toHaveLength(0);
+    expect(inputHash(buildInput({ ...rows(small), crossoverRounds: 0 }))).toBe(inputHash(buildInput(rows(small))));
+    expect(inputHash(buildInput({ ...rows(small), crossoverRounds: 1 }))).not.toBe(inputHash(buildInput(rows(small))));
+  });
+  it('the sample league (6 and 9 teams, 4 rounds): 4 different opponents each for the 6, and 2 or 3 games each for the 9', () => {
+    const games = x([div('a', 6), div('b', 9)], 4);
+    expect(games).toHaveLength(24);
+    expect(new Set(games.map((g) => g.key)).size).toBe(24);
+    const count = (prefix: string) => {
+      const n = new Map<string, number>();
+      for (const g of games) for (const t of [g.home, g.away]) if (t.startsWith(prefix)) n.set(t, (n.get(t) ?? 0) + 1);
+      return [...n.values()].sort();
+    };
+    expect(count('a-')).toEqual([4, 4, 4, 4, 4, 4]);
+    expect(count('b-')).toEqual([2, 2, 2, 3, 3, 3, 3, 3, 3]);
+  });
+  it('pairs every two divisions when there are three', () => {
+    expect(x([div('d1', 2), div('d2', 2), div('d3', 2)], 1)).toHaveLength(6);
+  });
+});

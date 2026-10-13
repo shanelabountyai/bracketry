@@ -55,6 +55,8 @@ export interface Game {
   away: TeamId;
   /** Equity is measured inside a division. Undefined = one implicit division. */
   division?: string;
+  /** A crossover game only (D-41): the away team's division. `division` is then the home team's. */
+  awayDivision?: string;
 }
 
 export interface Blackout {
@@ -221,6 +223,11 @@ export interface StandingsConfig {
   onPartialBreak: 'restart' | 'continue';
   /** Logged commissioner decisions (the coin flip). Each lists the teams of one unresolved group in final order. */
   manualResolutions?: TeamId[][];
+  /**
+   * Default false: a result naming a team outside the list is dropped for both sides (D-22).
+   * True (D-40): it counts for the team in the list, in the table and in 'all'-scope steps. 'tied'-scope steps never see it.
+   */
+  countCrossover?: boolean;
 }
 
 export const DEFAULT_STANDINGS: StandingsConfig = {

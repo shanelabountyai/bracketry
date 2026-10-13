@@ -21,6 +21,7 @@ export async function loadSeasonInput(ctx: OrgCtx, seasonId: string) {
     blackouts,
     rules: season.rules as Partial<Rules>,
     pinned: Object.fromEntries(pins.map((p) => [p.game.key, slotId(p.fieldSlot)])),
+    crossoverRounds: season.crossoverRounds,
   };
   return { season, rows, input: buildInput(rows), slotRowIds: new Map(slotRows.map((s) => [slotId(s), s.id])) };
 }

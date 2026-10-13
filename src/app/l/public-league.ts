@@ -30,7 +30,7 @@ interface SlotRow { day: string; start: string; field: { name: string } }
 interface PlacementRow {
   gameId: string;
   fieldSlot: SlotRow;
-  game: { division: { name: string }; homeTeam: { name: string }; awayTeam: { name: string }; results: { homeRuns: number; awayRuns: number; forfeit: 'home' | 'away' | null }[] };
+  game: { division: { name: string }; homeTeam: { name: string; divisionId: string }; awayTeam: { name: string; divisionId: string }; results: { homeRuns: number; awayRuns: number; forfeit: 'home' | 'away' | null }[] };
 }
 const slotLabel = (s: SlotRow) => `${s.day} ${s.start} · ${s.field.name}`;
 
@@ -43,7 +43,7 @@ export function toPublicGame(p: PlacementRow, was: SlotRow | null): PublicGame {
     day: p.fieldSlot.day,
     start: p.fieldSlot.start,
     field: p.fieldSlot.field.name,
-    division: p.game.division.name,
+    division: p.game.homeTeam.divisionId === p.game.awayTeam.divisionId ? p.game.division.name : 'Crossover',
     home: p.game.homeTeam.name,
     away: p.game.awayTeam.name,
     homeRuns: r?.homeRuns ?? null,
@@ -121,6 +121,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
     : null;
   const slot = { select: { day: true, start: true, field: { select: { name: true } } } };
   const named = { select: { name: true } };
+  const side = { select: { name: true, divisionId: true } };
   const [rows, s] = await Promise.all([
     db.placement.findMany({
       where: { scheduleVersionId: { in: [version.id, ...(prev ? [prev.id] : [])] }, ...org },
@@ -129,7 +130,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
         gameId: true,
         fieldSlotId: true,
         fieldSlot: slot,
-        game: { select: { division: named, homeTeam: named, awayTeam: named, results: { where: { supersededBy: { none: {} } }, select: { homeRuns: true, awayRuns: true, forfeit: true } } } },
+        game: { select: { division: named, homeTeam: side, awayTeam: side, results: { where: { supersededBy: { none: {} } }, select: { homeRuns: true, awayRuns: true, forfeit: true } } } },
       },
     }),
     loadBrackets(org, seasonId),

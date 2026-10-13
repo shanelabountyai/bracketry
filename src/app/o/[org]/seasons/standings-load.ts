@@ -22,18 +22,21 @@ export async function loadStandings(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string
     whatIf ? db.game.findMany({ where: { seasonId, results: { none: {} }, ...org }, orderBy: [{ round: 'asc' }, { key: 'asc' }] }) : [],
   ]);
   const config: StandingsConfig = { ...DEFAULT_STANDINGS, ...(season.standingsConfig as Partial<StandingsConfig>) };
+  // D-40: a crossover result counts in each team's own table. Passed at the call, never stored with the chain.
+  const counted = { ...config, countCrossover: true };
   const played: GameResult[] = results.map((r) => ({ home: r.game.homeTeamId, away: r.game.awayTeamId, homeRuns: r.homeRuns, awayRuns: r.awayRuns, ...(r.forfeit && { forfeit: r.forfeit }) }));
   const byDivision = divisions.map((d) => {
     const members = teams.filter((t) => t.divisionId === d.id);
     const ids = members.map((t) => t.id);
     const manualResolutions = resolutions.filter((x) => x.divisionId === d.id).map((x) => x.teamIds as string[]);
-    const open = unplayed.filter((g) => g.divisionId === d.id).map((g) => ({ id: g.id, home: g.homeTeamId, away: g.awayTeamId, supposed: whatIf?.[g.id] }));
+    // A crossover game is open in both divisions' arithmetic (D-40); `listed` puts its what-if inputs under the home side only.
+    const open = unplayed.filter((g) => ids.includes(g.homeTeamId) || ids.includes(g.awayTeamId)).map((g) => ({ id: g.id, home: g.homeTeamId, away: g.awayTeamId, supposed: whatIf?.[g.id], listed: g.divisionId === d.id }));
     const supposed = open.flatMap((g) => (g.supposed ? [{ home: g.home, away: g.away, ...g.supposed }] : []));
     const results = [...played, ...supposed];
-    const rows = computeStandings(ids, results, { ...config, manualResolutions });
-    const range = whatIf ? pointsRankRange(ids, results, open.filter((g) => !g.supposed), config) : null;
-    // D-22: the engine names teams by id; the screen swaps in names.
-    const name = (id: string) => members.find((t) => t.id === id)?.name ?? '?';
+    const rows = computeStandings(ids, results, { ...counted, manualResolutions });
+    const range = whatIf ? pointsRankRange(ids, results, open.filter((g) => !g.supposed), counted) : null;
+    // D-22: the engine names teams by id; the screen swaps in names. A crossover opponent is in another division.
+    const name = (id: string) => teams.find((t) => t.id === id)?.name ?? '?';
     const named = rows.map((r): StandingsRow & { name: string } => ({ ...r, name: name(r.team), note: ids.reduce((n, id) => n.replaceAll(id, name(id)), r.note) }));
     return { division: d, rows: named, name, open, supposed: supposed.length, range };
   });

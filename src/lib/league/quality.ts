@@ -1,6 +1,6 @@
 // L-020. QUAL-01, QUAL-02. Spec: docs/prds/01-generator-spec.md §6. Suite: tests/unit/league-quality.test.ts
 import { dayDiff, dayNumber, weekday } from './days';
-import { scoreSchedule } from './schedule';
+import { scoreSchedule, sides } from './schedule';
 import type { Assignment, ScheduleInput, ScoreReport, TeamId } from './types';
 
 const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -86,7 +86,7 @@ export function scheduleQuality(input: ScheduleInput, assignment: Assignment): Q
   const weeks = new Set(input.slots.map((s) => monday(s.day)));
 
   const division = new Map<TeamId, string>();
-  for (const g of input.games) for (const t of [g.home, g.away]) division.set(t, g.division ?? '');
+  for (const g of input.games) for (const s of sides(g)) division.set(s.team, s.division);
 
   const teams = [...division.entries()]
     .sort((a, b) => byString(a[1], b[1]) || byString(a[0], b[0]))

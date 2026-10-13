@@ -66,6 +66,16 @@ export const addField = orgAction(PERM, z.object({ seasonId: ref('season'), name
   revalidatePath(seasonPage(ctx, s.id));
 });
 
+/** DBL-01. Takes effect at the next generation; a draft made before the change is stale and cannot be published (D-31). */
+export const setCrossover = orgAction(PERM, z.object({ seasonId: ref('season'), rounds: int(0, 16, 'Crossover rounds') }), async (ctx, i) => {
+  const s = await mine(db.season.findFirst({ where: { id: i.seasonId, ...inOrg(ctx) }, select: { id: true, crossoverRounds: true } }));
+  await db.$transaction(async (tx) => {
+    await tx.season.update({ where: { id: s.id }, data: { crossoverRounds: i.rounds } });
+    await audit(ctx, 'season.crossover_set', { targetType: 'season', targetId: s.id, data: { before: s.crossoverRounds, after: i.rounds } }, tx);
+  });
+  revalidatePath(seasonPage(ctx, s.id));
+});
+
 export const addDivision = orgAction(
   PERM,
   z.object({ seasonId: ref('season'), name: name('division'), legs: z.enum(['1', '2']) }),

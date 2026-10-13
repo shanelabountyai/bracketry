@@ -107,4 +107,22 @@ describe('scoreSchedule: one rule at a time', () => {
     });
     expect(r.softCost).toBe(0); // undivided, 19:30 would read A0 against C2
   });
+  it('a crossover game counts for each team inside its own division (D-41)', () => {
+    // X = A, B. Y = D, E. A plays both crossovers at 19:30, so in X it is A2 against B0 at 19:30: one unit.
+    const games = [
+      { ...game(1, 'A', 'B'), division: 'X' },
+      { ...game(1, 'D', 'E'), division: 'Y' },
+      { key: 'X:A~D', round: 2, leg: 1 as const, home: 'A', away: 'D', division: 'X', awayDivision: 'Y' },
+      { key: 'X:A~E', round: 3, leg: 1 as const, home: 'E', away: 'A', division: 'Y', awayDivision: 'X' },
+    ];
+    const wide = makeSlots({ first: '2027-04-06', days: 14, weekdays: [2, 4], starts: ['18:00', '19:30'], fields: ['F1', 'F2'] });
+    const r = scoreSchedule(input(games, wide), {
+      'L1:A~B': '2027-04-06|18:00|F1',
+      'L1:D~E': '2027-04-06|18:00|F2',
+      'X:A~D': '2027-04-08|19:30|F2',
+      'X:A~E': '2027-04-13|19:30|F1',
+    });
+    expect(r.hardCount).toBe(0);
+    expect(r.soft).toEqual([expect.objectContaining({ code: 'SLOT_EQUITY', cost: 2, teams: ['A', 'B'] })]);
+  });
 });

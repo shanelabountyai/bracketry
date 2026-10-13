@@ -33,6 +33,12 @@ function grouped<T>(items: T[], key: (t: T) => string): [string, T[]][] {
   return [...m.entries()].sort((a, b) => byString(a[0], b[0]));
 }
 
+/** Each side of a game with the division it is measured in: its own, which for a crossover game differs by side (D-41). */
+export const sides = (g: Game): { team: string; division: string }[] => [
+  { team: g.home, division: g.division ?? '' },
+  { team: g.away, division: g.awayDivision ?? g.division ?? '' },
+];
+
 /** The one scoring function. The repair loop, the publish gate and the quality report all call this (D-4). */
 export function scoreSchedule(input: ScheduleInput, assignment: Assignment): ScoreReport {
   const { rules } = input;
@@ -59,7 +65,7 @@ export function scoreSchedule(input: ScheduleInput, assignment: Assignment): Sco
   }
   const where = (s: Slot) => `${s.day} ${s.start} on ${s.field}`;
   const keys = (ps: { game: Game }[]) => ps.map((p) => p.game.key);
-  const appearances = placed.flatMap((p) => [p.game.home, p.game.away].map((team) => ({ team, ...p })));
+  const appearances = placed.flatMap((p) => sides(p.game).map((side) => ({ ...side, ...p })));
 
   // ── Hard (spec §4.1), one unit each ──
   for (const [, ps] of grouped(placed, (p) => p.slot.id)) {
@@ -125,9 +131,9 @@ export function scoreSchedule(input: ScheduleInput, assignment: Assignment): Sco
   const equity = (code: 'SLOT_EQUITY' | 'FIELD_EQUITY', weight: number, dim: (s: Slot) => string, label: (v: string) => string) => {
     if (weight <= 0) return;
     const values = [...new Set(input.slots.map(dim))].sort();
-    for (const [division, gs] of grouped(input.games, (g) => g.division ?? '')) {
-      const teams = [...new Set(gs.flatMap((g) => [g.home, g.away]))].sort();
-      const inDivision = appearances.filter((p) => (p.game.division ?? '') === division);
+    for (const [division, members] of grouped(input.games.flatMap(sides), (s) => s.division)) {
+      const teams = [...new Set(members.map((s) => s.team))].sort();
+      const inDivision = appearances.filter((p) => p.division === division);
       for (const v of values) {
         const counts = teams.map((team) => ({ team, n: inDivision.filter((p) => p.team === team && dim(p.slot) === v).length }));
         const most = counts.reduce((m, c) => (c.n > m.n ? c : m));
