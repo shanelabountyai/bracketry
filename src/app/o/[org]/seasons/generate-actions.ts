@@ -3,6 +3,8 @@ import { randomInt } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { orgAction, ref } from '@/core/authz/action';
+import { inOrg } from '@/core/authz/guards';
+import { db } from '@/core/db';
 import { Refused } from '@/core/errors';
 import { capRefusal, CAPS } from '@/lib/league/build-input';
 import { checkFeasibility } from '@/lib/league/feasibility';
@@ -24,6 +26,8 @@ export const generate = orgAction(
   }),
   async (ctx, i) => {
     const { season, rows, input, slotRowIds } = await loadSeasonInput(ctx, i.seasonId);
+    // GEN-08: a plain run knows nothing of played games, so it is refused once one has a score.
+    if (await db.gameResult.count({ where: { game: { seasonId: season.id }, ...inOrg(ctx) } })) throw new Refused('A game in this season has a score. Use "Regenerate the rest"; it keeps played games where they were played.');
     const refusal = capRefusal(rows.divisions, input.games.length);
     if (refusal) throw new Refused(refusal);
     if (!input.games.length) throw new Refused('Add at least two teams to a division first.');

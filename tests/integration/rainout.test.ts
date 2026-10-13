@@ -130,6 +130,16 @@ describe('played games', () => {
   });
 });
 
+describe('plain generate after a score (GEN-08)', () => {
+  it('is refused and stores nothing once any game has a score', async () => {
+    const first = (await placed(1)).sort((a, b) => (a.fieldSlot.day < b.fieldSlot.day ? -1 : 1))[0]!;
+    setNow(`${first.fieldSlot.day}T23:00:00Z`);
+    await score(first.gameId);
+    expect(await gen('2')).toEqual({ error: expect.stringContaining('Regenerate the rest') });
+    expect(await db.scheduleVersion.count({ where: { seasonId } })).toBe(1);
+  });
+});
+
 describe('publishing a stale draft', () => {
   it('refuses a draft that uses a slot closed since, or that moves a game scored since', async () => {
     await gen('2');

@@ -1,3 +1,13 @@
+## L-029: no plain Generate once a game has a score (2026-10-13)
+
+**Built.** Written first as GEN-08 in `00-master-prd.md`. `generate` now counts the season's `GameResult` rows after the scoped lookup and refuses when there is one, before feasibility and before anything is stored. The Generate section of the season page drops the "Generate draft" and "New seed" forms once a result exists and shows a sentence pointing to "Regenerate the rest" under the rainout tool; the feasibility line and the latest report stay. One integration test in `tests/integration/rainout.test.ts`: score one game, a plain run is refused and the season still has one version.
+
+**Decided.** Nothing new. Readings taken: any result row counts, including a superseded one, since a correction is still a played game; the server refuses as well as the page hiding the buttons. A score can only be entered on a game in the published version, so "Regenerate the rest" is always available when plain generation is closed.
+
+**Measured.** Gate: lint 0 errors (1 warning, the template's), typecheck clean, 420 tests in 56 files (1 new), `foundation:drift` clean against v1.2.1. `e2e/golden-path.spec.ts`: 1 passed.
+
+**Left behind.** No browser test asserts the missing buttons or the sentence; the markup was not looked at in a browser. Playoff scores live on bracket rows, not `GameResult`, so they do not close plain generation (a season with playoff scores and no season scores is not a state the app reaches). A draft made by a plain run before the first score is still there; publish refuses it if it moves a scored game (L-017).
+
 ## L-028: results for tonight (2026-10-13)
 
 **Built.** Written first as SCORE-10 to SCORE-12 in `00-master-prd.md`. The Results section of the season page now opens with a count of played games that have no score, then those games under a heading for each field in date and time order, then every other game in date order under "Scored and upcoming". A game after today (season timezone, the same `today` the rainout tool uses) has no score form; `recordResult` still refuses it. The ordering is one function, `resultsOrder` in `src/app/o/[org]/seasons/results-order.ts`, with `tests/unit/results-order.test.ts` (3 tests). No action, schema or engine change.

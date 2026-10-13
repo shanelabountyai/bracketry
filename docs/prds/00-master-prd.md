@@ -72,6 +72,7 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **GEN-05** The report shows, for each run: hard count, unplaced count, soft cost before and after repair, iterations run and moves accepted, and every remaining soft violation in a sentence a coach would understand.
 - **GEN-06** A commissioner can pin a game to a slot ("rivalry night"). Pinned games never move; generation works around them. A pin that is illegal on its own is refused when it is set.
 - **GEN-07** Generation is bounded: at most 16 teams per division and 200 games per season, with an iteration cap. Over the limit is refused with the limit stated (D-17).
+- **GEN-08** (L-029) Once any game in the season has a score, plain generation is refused and stores nothing, and the console shows no Generate or New seed button; it points to "Regenerate the rest" (RAIN-05), which keeps played games where they were played.
 
 ### SCHED — versions and publishing
 

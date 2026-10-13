@@ -221,7 +221,8 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
       <p>Feasibility ({feas.feasible && !capped ? 'these inputs could fit' : 'blocked'}; a pass is a necessary check, not a promise): {feas.gamesNeeded} games needed, {feas.slotsAvailable} slots available, effective capacity {feas.effectiveCapacity}.</p>
       {capped && <p role="alert">{capped}</p>}
       <ul>{feas.shortfalls.map((f, i) => <li key={i}>{f.detail}</li>)}</ul>
-      {edit && (
+      {edit && results.length > 0 && <p>A game in this season has a score, so a plain run is closed (it would not keep played games in place). Use &ldquo;Regenerate the rest&rdquo; under the rainout tool.</p>}
+      {edit && !results.length && (
         <>
           <ActionForm action={bind(generate)}>
             {sid}
