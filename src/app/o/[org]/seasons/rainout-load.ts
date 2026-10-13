@@ -19,6 +19,9 @@ export const timeIn = (tz: string, at: Date) => new Intl.DateTimeFormat('sv-SE',
  * The engine has no clock, so this is where the past is kept out (D-23): a free slot on or before today is
  * not offered; a slot that holds a game always stays.
  */
+/** A game's score, as a filter on its result rows: the row nothing supersedes, unless that row is a void (D-13, D-45). */
+export const SCORED = { supersededBy: { none: {} }, voided: false } as const;
+
 export async function loadRainout(ctx: OrgCtx, seasonId: string) {
   const base = await loadSeasonInput(ctx, seasonId);
   const { season, input } = base;
@@ -26,7 +29,7 @@ export async function loadRainout(ctx: OrgCtx, seasonId: string) {
   const placements = published
     ? await db.placement.findMany({
         where: { scheduleVersionId: published.id, ...inOrg(ctx) },
-        select: { game: { select: { key: true, results: { select: { id: true }, take: 1 } } }, fieldSlot: { select: { id: true, day: true, start: true, fieldId: true, status: true } } },
+        select: { game: { select: { key: true, results: { where: SCORED, select: { id: true }, take: 1 } } }, fieldSlot: { select: { id: true, day: true, start: true, fieldId: true, status: true } } },
       })
     : [];
 

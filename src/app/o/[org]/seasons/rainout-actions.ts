@@ -12,7 +12,7 @@ import { compareAssignments } from '@/lib/league/compare';
 import { dayNumber } from '@/lib/league/days';
 import { generateSchedule, reschedule } from '@/lib/league/schedule';
 import { whyUnplaced } from '@/lib/league/unplaced';
-import { loadRainout } from './rainout-load';
+import { loadRainout, SCORED } from './rainout-load';
 import { saveDraft } from './save-draft';
 
 // Rainout tool (RAIN-01..05). Same permission as setup (D-27). Nothing here touches a published version:
@@ -36,7 +36,7 @@ export const closeDay = orgAction(PERM, z.object({ seasonId: ref('season'), day:
     await audit(ctx, 'slots.closed', { targetType: 'season', targetId: s.id, data: { day: i.day, slots: closed.count, pinsRemoved: pins.count } }, tx);
     return { slots: closed.count, pins: pins.count };
   });
-  const displaced = await db.placement.count({ where: { scheduleVersion: { status: 'published' }, fieldSlot: onDay, game: { results: { none: {} } }, ...inOrg(ctx) } });
+  const displaced = await db.placement.count({ where: { scheduleVersion: { status: 'published' }, fieldSlot: onDay, game: { results: { none: SCORED } }, ...inOrg(ctx) } });
   revalidatePath(seasonPage(ctx.slug, s.id));
   return { notice: `Closed ${r.slots} slots on ${i.day}.${r.pins ? ` Removed ${r.pins} pins that pointed at them.` : ''} ${displaced} published games are displaced.` };
 });

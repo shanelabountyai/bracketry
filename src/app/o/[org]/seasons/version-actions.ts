@@ -13,6 +13,7 @@ import { scoreSchedule } from '@/lib/league/schedule';
 import { isPublishable, type ScoreReport } from '@/lib/league/types';
 import { enqueue } from '@/modules/notifications/outbox';
 import { loadSeasonInput } from './load-input';
+import { SCORED } from './rainout-load';
 
 // Versions and pins (SCHED-02, GEN-06). Same permission as setup (D-27). A version's rows are never updated;
 // publishing changes only status, reason and publishedAt (D-10). Publishing over an earlier published version
@@ -40,7 +41,7 @@ export const publish = orgAction(
         gameId: true,
         fieldSlotId: true,
         fieldSlot: { select: { day: true, start: true, status: true, field: { select: { name: true } } } },
-        game: { select: { homeTeam: team, awayTeam: team, results: { select: { id: true }, take: 1 } } },
+        game: { select: { homeTeam: team, awayTeam: team, results: { where: SCORED, select: { id: true }, take: 1 } } },
       },
     });
     const was = new Map(rows.filter((p) => p.scheduleVersionId === prev?.id).map((p) => [p.gameId, p]));

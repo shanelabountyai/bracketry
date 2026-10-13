@@ -265,8 +265,8 @@ model Placement {
 }
 
 /// Append-only by trigger (D-13). A correction is a new row whose supersedesId names the row it replaces;
-/// the current result of a game is the row nothing supersedes.
-/// migration SQL (hand-written): one original (supersedesId IS NULL) per game.
+/// the current result of a game is the row nothing supersedes. If that row is a void, the game has no score (D-45).
+/// migration SQL (hand-written): one original (supersedesId IS NULL) per game; a void supersedes a row, has a reason and no score.
 model GameResult {
   id           String       @id @default(uuid()) @db.Uuid
   orgId        String       @db.Uuid
@@ -276,6 +276,7 @@ model GameResult {
   homeRuns     Int
   awayRuns     Int
   forfeit      Side? // the side that forfeited
+  voided       Boolean      @default(false)
   supersedesId String?      @unique @db.Uuid // a result is superseded at most once
   supersedes   GameResult?  @relation("Supersedes", fields: [supersedesId, gameId], references: [id, gameId], onDelete: Cascade)
   supersededBy GameResult[] @relation("Supersedes") // at most one, by the unique above

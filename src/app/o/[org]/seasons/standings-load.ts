@@ -1,13 +1,14 @@
 import type { OrgCtx } from '@/core/authz/guards';
 import { db } from '@/core/db';
 import { computeStandings, pointsRankRange } from '@/lib/league/standings';
+import { SCORED } from './rainout-load';
 import { DEFAULT_STANDINGS, type GameResult, type StandingsConfig, type StandingsRow } from '@/lib/league/types';
 
 /** Hypothetical scores by game id (WHATIF-01). Only games with no result are looked up, so a played game cannot be overridden. */
 export type WhatIf = Record<string, { homeRuns: number; awayRuns: number } | undefined>;
 
 /**
- * Standings are computed on read (D-13): the newest non-superseded result per game, through the engine.
+ * Standings are computed on read (D-13): the newest non-superseded result per game, through the engine. A voided game has none (D-45).
  * With `whatIf` (the standings page only) each division also gets its unplayed games and its points range (D-38).
  */
 export async function loadStandings(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string, whatIf?: WhatIf) {
@@ -17,9 +18,9 @@ export async function loadStandings(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string
   const [divisions, teams, results, resolutions, unplayed] = await Promise.all([
     db.division.findMany({ where: { seasonId, ...org }, orderBy: { name: 'asc' } }),
     db.team.findMany({ where: { seasonId, ...org }, orderBy: { name: 'asc' } }),
-    db.gameResult.findMany({ where: { game: { seasonId }, supersededBy: { none: {} }, ...org }, include: { game: true } }),
+    db.gameResult.findMany({ where: { game: { seasonId }, ...SCORED, ...org }, include: { game: true } }),
     db.tieResolution.findMany({ where: { division: { seasonId }, ...org }, orderBy: { decidedAt: 'asc' } }),
-    whatIf ? db.game.findMany({ where: { seasonId, results: { none: {} }, ...org }, orderBy: [{ round: 'asc' }, { key: 'asc' }] }) : [],
+    whatIf ? db.game.findMany({ where: { seasonId, results: { none: SCORED }, ...org }, orderBy: [{ round: 'asc' }, { key: 'asc' }] }) : [],
   ]);
   const config: StandingsConfig = { ...DEFAULT_STANDINGS, ...(season.standingsConfig as Partial<StandingsConfig>) };
   // D-40: a crossover result counts in each team's own table. Passed at the call, never stored with the chain.

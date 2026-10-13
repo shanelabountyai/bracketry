@@ -11,7 +11,7 @@ import { DEFAULT_RULES, isPublishable, type Rules, type ScoreReport } from '@/li
 import { generate } from '../generate-actions';
 import { closeDay, proposeReschedule, regenerateRest } from '../rainout-actions';
 import { loadRainout, timeIn } from '../rainout-load';
-import { recordResult } from '../result-actions';
+import { recordResult, voidResult } from '../result-actions';
 import { resultsOrder } from '../results-order';
 import { publish, removePin, setPin } from '../version-actions';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, editTeam, saveRules, setCrossover, setSlotOpen } from '../actions';
@@ -72,15 +72,17 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
     scored.flatMap((pl) => {
       const [g, slot] = [games.find((x) => x.id === pl.gameId), slots.find((x) => x.id === pl.fieldSlotId)];
       const history = results.filter((r) => r.gameId === pl.gameId);
-      return g && slot ? [{ g, history, day: slot.day, start: slot.start, field: fieldName(slot.fieldId), scored: history.length > 0 }] : [];
+      return g && slot ? [{ g, history, day: slot.day, start: slot.start, field: fieldName(slot.fieldId), scored: history.length > 0 && !history[history.length - 1]!.voided }] : [];
     }),
     rain.today,
   );
   const owedCount = owed.reduce((n, [, rows]) => n + rows.length, 0);
   const resultItem = ({ g, history, day, start, field }: (typeof rest)[number]) => {
-    const last = history[history.length - 1];
+    // A void leaves the game with no score (D-45): the history keeps it, the form is a first entry again.
+    const newest = history[history.length - 1];
+    const last = newest?.voided ? undefined : newest;
     const [home, away] = [teamName(g.homeTeamId), teamName(g.awayTeamId)];
-    const show = (r: (typeof results)[number]) => (r.forfeit ? `${r.forfeit === 'home' ? home : away} forfeited` : `${r.homeRuns}–${r.awayRuns}${r.homeRuns === r.awayRuns ? ' (Tie)' : ''}`);
+    const show = (r: (typeof results)[number]) => (r.voided ? 'Voided' : r.forfeit ? `${r.forfeit === 'home' ? home : away} forfeited` : `${r.homeRuns}–${r.awayRuns}${r.homeRuns === r.awayRuns ? ' (Tie)' : ''}`);
     return (
       <li key={g.id}>
         {home} v {away} · {day} {start} · {field} ·{' '}
@@ -101,7 +103,16 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
             <label>Forfeit by <select name="forfeit" defaultValue=""><option value="">none</option><option value="home">{home}</option><option value="away">{away}</option></select></label>
             {last && <label><input name="correction" type="checkbox" defaultChecked /> This corrects the score above</label>}
             {last && <label>Reason for the correction <input name="reason" required maxLength={500} /></label>}
+            {/* The confirm line (SCORE-13): the browser will not send the form until it is ticked. */}
+            <label><input type="checkbox" required /> This is {home} v {away}, {day} {start}, {field}</label>
             <button type="submit">{last ? 'Save correction' : 'Save score'}</button>
+          </ActionForm>
+        )}
+        {edit && last && (
+          <ActionForm action={bind(voidResult)}>
+            <input type="hidden" name="gameId" value={g.id} />
+            <label>Entered on the wrong game? Reason <input name="reason" required maxLength={500} /></label>
+            <button type="submit">Void this score</button>
           </ActionForm>
         )}
       </li>

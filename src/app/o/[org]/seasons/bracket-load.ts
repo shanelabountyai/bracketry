@@ -3,6 +3,7 @@ import type { OrgCtx } from '@/core/authz/guards';
 import { db } from '@/core/db';
 import { buildBracket, recordResult } from '@/lib/league/bracket';
 import type { Bracket, BracketMatch, BracketSlot, StandingsRow } from '@/lib/league/types';
+import { SCORED } from './rainout-load';
 import { loadStandings } from './standings-load';
 
 /** `Bracket.seeding`: the frozen seed order, best first, and the division table it was read from (BRKT-03, D-15). */
@@ -35,7 +36,7 @@ export async function loadBrackets(ctx: Pick<OrgCtx, 'orgId'>, seasonId: string)
   if (!s) return null;
   const [brackets, unscored] = await Promise.all([
     db.bracket.findMany({ where: { division: { seasonId }, ...org }, include: { games: { include: { fieldSlot: { include: { field: true } } } } } }),
-    db.placement.findMany({ where: { scheduleVersion: { seasonId, status: 'published' }, game: { results: { none: {} } }, ...org }, select: { game: { select: { homeTeamId: true, awayTeamId: true } } } }),
+    db.placement.findMany({ where: { scheduleVersion: { seasonId, status: 'published' }, game: { results: { none: SCORED } }, ...org }, select: { game: { select: { homeTeamId: true, awayTeamId: true } } } }),
   ]);
   const byDivision = s.byDivision.map((d) => {
     const row = brackets.find((b) => b.divisionId === d.division.id);

@@ -3,7 +3,8 @@ import { advanceClock } from '@/core/clock';
 import { db } from '@/core/db';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { timeIn } from '@/app/o/[org]/seasons/rainout-load';
-import { recordResult } from '@/app/o/[org]/seasons/result-actions';
+import { recordResult, voidResult } from '@/app/o/[org]/seasons/result-actions';
+import { loadStandings } from '@/app/o/[org]/seasons/standings-load';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
@@ -94,5 +95,39 @@ describe('recordResult', () => {
     const g = await placedGame('2026-10-06');
     expect(await recordResult(SLUG, { gameId: g, homeRuns: '-1', awayRuns: '2' })).toEqual({ error: 'Runs cannot be negative.' });
     expect(await recordResult(SLUG, { gameId: g, homeRuns: 'x', awayRuns: '2' })).toEqual({ error: 'Runs must be a whole number.' });
+  });
+});
+
+describe('voidResult (SCORE-14, D-45)', () => {
+  it('voids with a superseding row, leaves the game unscored everywhere, and lets a plain score follow', async () => {
+    await publishOne();
+    const g = await placedGame('2026-10-06');
+    expect(await voidResult(SLUG, { gameId: g, reason: 'Wrong game' })).toEqual({ error: 'That game has no score to void.' });
+    await recordResult(SLUG, { gameId: g, homeRuns: '7', awayRuns: '3' });
+    expect(await voidResult(SLUG, { gameId: g, reason: ' ' })).toEqual({ error: 'Give a reason for voiding the score.' });
+    expect(await voidResult(SLUG, { gameId: g, reason: 'Wrong game' })).toEqual({ notice: expect.stringContaining('Score voided') });
+    expect(await voidResult(SLUG, { gameId: g, reason: 'Again' })).toEqual({ error: 'That game has no score to void.' });
+
+    const rows = await db.gameResult.findMany({ where: { gameId: g }, orderBy: { enteredAt: 'asc' } });
+    expect(rows.map((r) => [r.homeRuns, r.voided, r.supersedesId])).toEqual([[7, false, null], [0, true, rows[0]!.id]]); // nothing deleted
+    const standings = (await loadStandings({ orgId }, seasonId, {}))!;
+    expect(standings.hasResults).toBe(false);
+    expect(standings.byDivision[0]!.rows.every((r) => r.played === 0)).toBe(true);
+    expect(standings.byDivision[0]!.open.map((o) => o.id)).toContain(g); // back among the unplayed games
+
+    // Unscored again: a correction has nothing to correct, a plain score is accepted and supersedes the void row.
+    expect(await recordResult(SLUG, { gameId: g, homeRuns: '1', awayRuns: '2', correction: 'on', reason: 'x' })).toEqual({ error: 'There is no score to correct yet.' });
+    expect(await recordResult(SLUG, { gameId: g, homeRuns: '1', awayRuns: '2' })).toEqual({ notice: 'Score saved.' });
+    expect((await db.gameResult.findFirstOrThrow({ where: { gameId: g, supersededBy: { none: {} } } })).supersedesId).toBe(rows[1]!.id);
+    expect((await loadStandings({ orgId }, seasonId))!.byDivision[0]!.rows.filter((r) => r.played === 1)).toHaveLength(2);
+  });
+
+  it('the database refuses a void that supersedes nothing or carries a score', async () => {
+    await publishOne();
+    const g = await placedGame('2026-10-06');
+    const by = crypto.randomUUID();
+    await expect(db.gameResult.create({ data: { orgId, gameId: g, homeRuns: 0, awayRuns: 0, voided: true, reason: 'x', enteredBy: by } })).rejects.toThrow(/GameResult_void_shape/);
+    const first = await db.gameResult.create({ data: { orgId, gameId: g, homeRuns: 3, awayRuns: 2, enteredBy: by } });
+    await expect(db.gameResult.create({ data: { orgId, gameId: g, homeRuns: 3, awayRuns: 2, voided: true, supersedesId: first.id, reason: 'x', enteredBy: by } })).rejects.toThrow(/GameResult_void_shape/);
   });
 });

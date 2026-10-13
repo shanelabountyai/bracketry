@@ -4,6 +4,7 @@ import { db } from '@/core/db';
 import { champion } from '@/lib/league/bracket';
 import type { BracketMatch, BracketSlot, StandingsRow } from '@/lib/league/types';
 import { loadBrackets } from '@/app/o/[org]/seasons/bracket-load';
+import { SCORED } from '@/app/o/[org]/seasons/rainout-load';
 
 // The public league page's data (PUB-01..03, D-33). Built the way the template's share contract asks
 // (spec §7c): each projection starts from an empty default and opts fields in by name, so a column added
@@ -130,7 +131,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
         gameId: true,
         fieldSlotId: true,
         fieldSlot: slot,
-        game: { select: { division: named, homeTeam: side, awayTeam: side, results: { where: { supersededBy: { none: {} } }, select: { homeRuns: true, awayRuns: true, forfeit: true } } } },
+        game: { select: { division: named, homeTeam: side, awayTeam: side, results: { where: SCORED, select: { homeRuns: true, awayRuns: true, forfeit: true } } } },
       },
     }),
     loadBrackets(org, seasonId),

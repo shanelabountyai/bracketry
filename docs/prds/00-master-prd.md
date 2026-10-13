@@ -105,6 +105,9 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **SCORE-10** (L-028) The results list opens with the games on or before today (season timezone) that have no score, under a heading for each field, in date and time order. Every other game follows in date order.
 - **SCORE-11** (L-028) A game after today shows no score form. The action still refuses it (SCORE-01).
 - **SCORE-12** (L-028) Above the list is the number of played games still without a score.
+- **SCORE-13** (L-031) The score form ends with a confirm line naming the two teams, the day, the time and the field. The browser does not send the form until it is ticked.
+- **SCORE-14** (L-031) A season game's score can be voided with a reason. The void is a new row that supersedes the score; nothing is deleted, and the database refuses a void that supersedes nothing, has no reason or carries a score. A game with no score cannot be voided.
+- **SCORE-15** (L-031) A voided game has no score (D-45): it is back among the games without one and in their count, it is out of the standings, the public page shows it as any unscored game, and a rainout may move it. The next score is a plain entry, not a correction. The commissioner's history lists the voided score, the void, who and why.
 
 ### STAND — standings
 
