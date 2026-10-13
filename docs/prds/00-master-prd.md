@@ -66,6 +66,7 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **SEASON-08** (L-030) On the season page's team list a team with no contact email says so, with what it costs: no notice when its games move. This is shown to every member; the email itself is shown only in the commissioner's edit form.
 - **SEASON-09** (L-038) A commissioner can start a season as a copy of another one in the same organization: a new name, first day and last day are typed; the timezone, game length, rules, standings settings and crossover rounds are taken from the source; every division (name, single or double) and every team (name, contact email) is created again; every weekly slot pattern is created again and materialized across the new window. Fields belong to the organization (SEASON-03) and are not duplicated. The copy starts in `setup` with no games, pins, versions or results.
 - **SEASON-10** (L-038) Nothing dated is copied: blackouts, slots closed or added by hand, and makeup slots stay with the source. The source season is not changed. A backwards window or a day that is not a real day is refused; another organization's season is not found. The copy is one transaction and one audit row naming the source.
+- **SEASON-11** (L-043) A new season's first and last day must be real days; `2026-02-30` is refused with a message and nothing is stored.
 
 ### GEN — generation
 
@@ -132,6 +133,7 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **BRKT-05** A result feeds the winner forward. Ties are refused. A forfeit advances the other team. A result can be corrected until the next game in that line has a result.
 - **BRKT-06** (L-034) Publish scores the draft together with every playoff game that holds a slot, through `scoreSchedule` (D-4). A draft that puts a season game in a playoff game's slot, or a team in a season game and a playoff game at the same time or past the daily limit, is refused and nothing is published. Only a clash between a season game and a playoff game refuses here; the draft's own report is checked as before.
 - **BRKT-07** (L-034) Placing playoff games queues one notice per team in them through the outbox, in the same transaction as the placement, naming the round, the two teams, the old slot (or "not scheduled") and the new one. The action reports how many notices were queued and how many teams have no contact email.
+- **BRKT-08** (L-042) The rainout tool sees every placed playoff game. Reschedule and "Regenerate the rest" hand the engine those games as games that do not move, so a season game is never proposed where it would be a hard violation against one (a team twice in a day, too little rest); with no other legal slot it is unplaced with the reason (RAIN-03). The draft that is stored, and its report, hold season games only.
 
 ### PUB — public pages
 

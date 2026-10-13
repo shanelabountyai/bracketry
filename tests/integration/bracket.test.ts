@@ -7,7 +7,7 @@ import { clearBracketResult, generateBracket, placeBracketGames, recordBracketRe
 import { loadBrackets } from '@/app/o/[org]/seasons/bracket-load';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { loadSeasonInput } from '@/app/o/[org]/seasons/load-input';
-import { closeDay } from '@/app/o/[org]/seasons/rainout-actions';
+import { closeDay, proposeReschedule, regenerateRest } from '@/app/o/[org]/seasons/rainout-actions';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
@@ -230,5 +230,29 @@ describe('playoff games, the outbox and publish (L-034)', () => {
     await place();
     expect((await db.outbox.findMany({ where: { to: 'coach0@example.test' } })).map((m) => (m.data as { body: string }).body)).toContain('Open playoffs\n\nFinal, T0 v T1: was 2026-11-17 18:00 at F1, now 2026-12-01 18:00 at F1.');
   });
-});
 
+  it('keeps a rained-out season game off the day its team has a playoff game, in a reschedule and in a regeneration (BRKT-08)', async () => {
+    // Found in L-034: the rainout tool did not see playoff games, so it proposed a draft that publish refused, every time.
+    // T1 v T3 loses its score, the final T0 v T1 takes 2026-11-17 18:00, and T1 v T3's day is rained out.
+    // Two slots are free for it: 19:30 on the final's day, which T1 cannot play (one game a day), and 2026-11-24.
+    const scored = await db.gameResult.findFirstOrThrow({ where: { game: { OR: [{ homeTeamId: team.T1, awayTeamId: team.T3 }, { homeTeamId: team.T3, awayTeamId: team.T1 }] } } });
+    await db.gameResult.create({ data: { orgId, gameId: scored.gameId, homeRuns: 0, awayRuns: 0, voided: true, supersedesId: scored.id, reason: 'Wrong game', enteredBy: crypto.randomUUID() } });
+    await slot('2026-11-17', '18:00');
+    await seed(2);
+    await place();
+    const was = await db.placement.findFirstOrThrow({ where: { gameId: scored.gameId }, include: { fieldSlot: true } });
+    await closeDay(SLUG, { seasonId, day: was.fieldSlot.day });
+    await slot('2026-11-17', '19:30');
+    await slot('2026-11-24', '18:00');
+    const dayIn = async (number: number) => (await db.placement.findFirst({ where: { gameId: scored.gameId, scheduleVersion: { number } }, include: { fieldSlot: true } }))?.fieldSlot.day;
+
+    expect(await regenerateRest(SLUG, { seasonId, confirm: 'on' })).toEqual({ notice: expect.stringContaining('Draft version 2') });
+    expect(await dayIn(2)).toBe('2026-11-24');
+    expect(await proposeReschedule(SLUG, { seasonId })).toEqual({ notice: 'Draft version 3: 1 of 1 displaced games moved, 0 have no legal slot. Every other game kept its slot.' });
+    expect(await dayIn(3)).toBe('2026-11-24');
+    // A version holds season games only: six placements, none for the final.
+    expect(await db.placement.count({ where: { scheduleVersion: { number: 3 } } })).toBe(6);
+    const v3 = await db.scheduleVersion.findFirstOrThrow({ where: { number: 3 } });
+    expect(await publish(SLUG, { versionId: v3.id, reason: 'Rain' })).toEqual({ notice: expect.stringContaining('Version 3 is published') });
+  });
+});

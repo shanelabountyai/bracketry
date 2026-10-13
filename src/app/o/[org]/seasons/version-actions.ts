@@ -12,7 +12,7 @@ import { slotId } from '@/lib/league/build-input';
 import { scoreSchedule } from '@/lib/league/schedule';
 import { isPublishable, type Game, type ScoreReport, type Slot } from '@/lib/league/types';
 import { enqueue } from '@/modules/notifications/outbox';
-import { isPlayoffKey, playoffGame, playoffKey } from './bracket-load';
+import { isPlayoffKey, loadPlacedPlayoffs, playoffGame, playoffKey } from './bracket-load';
 import { loadSeasonInput } from './load-input';
 import { SCORED } from './rainout-load';
 
@@ -56,12 +56,7 @@ export const publish = orgAction(
 
     // BRKT-06: a playoff game may have taken a slot since the draft was made. The draft and every playoff game that
     // holds a slot are scored as one schedule, and a hard violation between one of each refuses (D-4).
-    const playoffs = (
-      await db.bracketGame.findMany({
-        where: { bracket: { division: { seasonId: v.seasonId } }, aTeamId: { not: null }, bTeamId: { not: null }, fieldSlotId: { not: null }, ...inOrg(ctx) },
-        include: { fieldSlot: true, bracket: { select: { divisionId: true, seeding: true } } },
-      })
-    ).filter((g) => g.aRuns !== null || g.fieldSlot!.status !== 'closed'); // an unplayed one in a closed slot is about to be placed again
+    const playoffs = await loadPlacedPlayoffs(ctx, v.seasonId);
     if (playoffs.length) {
       const { input } = await loadSeasonInput(ctx, v.seasonId);
       const engineSlot = (s: { day: string; start: string; fieldId: string }): Slot => ({ id: slotId(s), day: s.day, start: s.start, field: s.fieldId });

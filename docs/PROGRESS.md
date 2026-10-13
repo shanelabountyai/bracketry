@@ -1,3 +1,21 @@
+## L-043: a new season refuses a day that is not real (2026-10-13)
+
+**Built.** SEASON-11. `addSeason` calls the same `validDay` every other setup action uses, before the write. Found while writing L-038: `2026-02-30` passed the schema, which only compared the two strings, and reached the database.
+
+**Measured.** One assertion added to an existing test in `tests/integration/season-setup.test.ts`; gate figures are L-042's.
+
+**Left behind.** Nothing.
+
+## L-042: the rainout tool sees playoff games (2026-10-13)
+
+**Built.** Written first as BRKT-08 in `00-master-prd.md`, and as a failing test before the fix (the open note from L-034). `loadPlacedPlayoffs` and `withPlayoffs` in `bracket-load.ts`: the first is the query publish already ran, moved so publish and the rainout tool load the same rows; the second adds those games and their slots to a season input and returns where they sit. `proposeReschedule` passes them to `reschedule` as part of the current schedule, `regenerateRest` passes them to `generateSchedule` as pins. No rule is written in either action: a team twice in a day is the scorer's answer (D-4). The playoff keys are taken out before the draft is stored, and the D-12 check in `proposeReschedule` now also fails if a playoff game moved. No engine change, no schema change, no migration.
+
+**Decided.** D-50: the stored report counts season games only, by a second `scoreSchedule` call on what is stored.
+
+**Measured.** Gate: lint 0 errors (1 warning, the template's), typecheck clean, 432 tests in 56 files (431 before: 1 in `tests/integration/bracket.test.ts`), `foundation:drift` clean against v1.2.1. `e2e/golden-path.spec.ts`: 1 passed in 12.1 s against the production build; it asserts nothing new. The new test: T1 v T3 is rained out with the final T0 v T1 on 2026-11-17 18:00 and two free slots, 19:30 that day and 2026-11-24. Before the fix the regeneration put it on 2026-11-17 (the test failed there, on its first assertion); after it, the regeneration and the reschedule both put it on 2026-11-24, the draft holds six placements and publishes.
+
+**Left behind.** `placeBracketGames` still builds its own list of fixed playoff games; it differs (it includes the games it is about to place) and was not folded in. The regeneration's "before" cost includes the playoff games (D-50). The publish refusal still names the playoff slot and not the teams. Only the one-game-a-day clash was tried; a rest-day clash against a playoff game was not. Not tried with two brackets.
+
 ## L-038: copy a season (2026-10-13)
 
 **Built.** Written first as SEASON-09 and SEASON-10 in `00-master-prd.md`. `copySeason` in `seasons/actions.ts` takes a source season, a name and a new first and last day, and in one transaction creates the season with the source's timezone, game length, rules, standings settings and crossover rounds, its divisions and teams, and its weekly slot patterns, then materializes those patterns across the new window with the same `materializeSlots` call `addSlotPattern` uses. The seasons list has a "Copy a season" form under "New season" for a commissioner, with a sentence saying what is and is not copied. No engine change, no schema change, no migration.

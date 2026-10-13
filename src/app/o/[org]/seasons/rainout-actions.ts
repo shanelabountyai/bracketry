@@ -10,8 +10,10 @@ import { db } from '@/core/db';
 import { Refused } from '@/core/errors';
 import { compareAssignments } from '@/lib/league/compare';
 import { dayNumber } from '@/lib/league/days';
-import { generateSchedule, reschedule } from '@/lib/league/schedule';
+import { generateSchedule, reschedule, scoreSchedule } from '@/lib/league/schedule';
+import type { Assignment } from '@/lib/league/types';
 import { whyUnplaced } from '@/lib/league/unplaced';
+import { isPlayoffKey, loadPlacedPlayoffs, withPlayoffs } from './bracket-load';
 import { loadRainout, SCORED } from './rainout-load';
 import { saveDraft } from './save-draft';
 
@@ -19,6 +21,8 @@ import { saveDraft } from './save-draft';
 // both actions end in a new draft, and notices go out when that draft is published (D-18, version-actions.ts).
 const PERM = 'org.update' as const;
 const seasonPage = (slug: string, id: string) => `/o/${slug}/seasons/${id}`;
+/** BRKT-08: the engine sees the placed playoff games as fixed; a version stores, and its report counts, season games only. */
+const seasonOnly = (a: Assignment): Assignment => Object.fromEntries(Object.entries(a).filter(([key]) => !isPlayoffKey(key)));
 
 /** RAIN-01: close every open or makeup slot on one day. Pins on those slots are removed: a pin to a closed slot can never be met. */
 export const closeDay = orgAction(PERM, z.object({ seasonId: ref('season'), day: z.string() }), async (ctx, i) => {
@@ -47,19 +51,22 @@ export const proposeReschedule = orgAction(PERM, z.object({ seasonId: ref('seaso
   if (!r.published) throw new Refused('Publish a version first. A reschedule starts from the published schedule.');
   if (!r.displaced.length) throw new Refused('No unplayed game sits in a closed slot, so there is nothing to reschedule.');
 
-  const out = reschedule({ input: r.rescheduleInput, current: r.current, removedSlotIds: r.displaced.map((d) => d.slot), seed: 0 });
+  const p = withPlayoffs(r.rescheduleInput, await loadPlacedPlayoffs(ctx, r.season.id));
+  const before = { ...r.current, ...p.fixed };
+  const out = reschedule({ input: p.input, current: before, removedSlotIds: r.displaced.map((d) => d.slot), seed: 0 });
   // D-12 is the point of this action, so it is checked on every run, not only in the engine's tests.
   const displaced = new Set(r.displaced.map((d) => d.key));
-  const stray = compareAssignments(r.current, out.assignment).filter((m) => !displaced.has(m.key));
+  const stray = compareAssignments(before, out.assignment).filter((m) => !displaced.has(m.key));
   if (stray.length) throw new Error(`reschedule moved games that were not displaced (D-12): ${stray.map((m) => m.key).join(', ')}`);
 
-  const unplaced = Object.fromEntries(out.unplaced.map((key) => [key, whyUnplaced(r.rescheduleInput, out.assignment, key)]));
+  const assignment = seasonOnly(out.assignment);
+  const unplaced = Object.fromEntries(out.unplaced.map((key) => [key, whyUnplaced(p.input, out.assignment, key)]));
   const number = await saveDraft(ctx, r.season.id, {
     input: r.rescheduleInput,
-    assignment: out.assignment,
+    assignment,
     slotRowIds: r.slotRowIds,
     seed: 0, // spec 01 §7 makes no random choice
-    report: { ...out.report, reschedule: { of: r.published.number, moved: out.moved, unplaced } },
+    report: { ...scoreSchedule(r.rescheduleInput, assignment), reschedule: { of: r.published.number, moved: out.moved, unplaced } },
     iterations: 0,
     accepted: 0,
     action: 'schedule.rescheduled',
@@ -76,22 +83,24 @@ export const regenerateRest = orgAction(
     const r = await loadRainout(ctx, i.seasonId);
     if (!r.published) throw new Refused('Publish a version first. There is no season in progress to regenerate.');
     const seed = randomInt(2 ** 32);
-    const result = generateSchedule(r.regenerateInput, { seed });
+    const p = withPlayoffs(r.regenerateInput, await loadPlacedPlayoffs(ctx, r.season.id));
+    const result = generateSchedule({ ...p.input, pinned: { ...p.input.pinned, ...p.fixed } }, { seed });
+    const assignment = seasonOnly(result.assignment);
     const kept = Object.keys(r.played).length;
     const unplayed = r.regenerateInput.games.length - kept;
-    const moved = compareAssignments(r.current, result.assignment).length;
+    const moved = compareAssignments(r.current, assignment).length;
     const b = result.before;
     const number = await saveDraft(ctx, r.season.id, {
       input: r.regenerateInput,
-      assignment: result.assignment,
+      assignment,
       slotRowIds: r.slotRowIds,
       seed,
-      report: { ...result.report, before: { hardCount: b.hardCount, unplaced: b.unplaced.length, softCost: b.softCost }, regenerated: { of: r.published.number, kept, unplayed, moved } },
+      report: { ...scoreSchedule(r.regenerateInput, assignment), before: { hardCount: b.hardCount, unplaced: b.unplaced.length, softCost: b.softCost }, regenerated: { of: r.published.number, kept, unplayed, moved } },
       iterations: result.iterations,
       accepted: result.accepted,
       action: 'schedule.regenerated',
     });
     revalidatePath(seasonPage(ctx.slug, r.season.id));
-    return { notice: `Draft version ${number} keeps the ${kept} played games and moves ${moved} of the ${unplayed} unplayed games (${result.report.unplaced.length} unplaced). Compare it with version ${r.published.number} before publishing.` };
+    return { notice: `Draft version ${number} keeps the ${kept} played games and moves ${moved} of the ${unplayed} unplayed games (${unplayed + kept - Object.keys(assignment).length} unplaced). Compare it with version ${r.published.number} before publishing.` };
   },
 );

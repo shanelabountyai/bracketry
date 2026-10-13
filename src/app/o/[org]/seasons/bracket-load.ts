@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import type { OrgCtx } from '@/core/authz/guards';
 import { db } from '@/core/db';
 import { buildBracket, recordResult } from '@/lib/league/bracket';
-import type { Bracket, BracketMatch, BracketSlot, Game, StandingsRow } from '@/lib/league/types';
+import { slotId } from '@/lib/league/build-input';
+import type { Assignment, Bracket, BracketMatch, BracketSlot, Game, ScheduleInput, StandingsRow } from '@/lib/league/types';
 import { SCORED } from './rainout-load';
 import { loadStandings } from './standings-load';
 
@@ -25,6 +26,31 @@ export function playoffGame(g: PlayoffRow): Game {
   const seeds = (g.bracket.seeding as Seeding).teams;
   const [home, away] = [g.aTeamId!, g.bTeamId!].sort((x, y) => seeds.indexOf(x) - seeds.indexOf(y)); // BRKT-02: the better seed is home
   return { key: playoffKey(g), round: g.round, leg: 1, home: home!, away: away!, division: g.bracket.divisionId };
+}
+
+/** Every playoff game with two known teams that holds a slot. An unplayed one in a closed slot is left out: it is about to be placed again. */
+export const loadPlacedPlayoffs = async (ctx: Pick<OrgCtx, 'orgId'>, seasonId: string) =>
+  (
+    await db.bracketGame.findMany({
+      where: { bracket: { division: { seasonId } }, aTeamId: { not: null }, bTeamId: { not: null }, fieldSlotId: { not: null }, orgId: ctx.orgId },
+      include: { fieldSlot: true, bracket: { select: { divisionId: true, seeding: true } } },
+    })
+  ).filter((g) => g.aRuns !== null || g.fieldSlot!.status !== 'closed');
+
+/**
+ * BRKT-08: a season input with the placed playoff games added as games, each with its slot, and `fixed`, where they sit.
+ * The rainout tool hands `fixed` to the engine as placements that do not move, so a season game's legality against a
+ * playoff game is scoreSchedule's answer, the one publish will ask for (BRKT-06, D-4).
+ */
+export function withPlayoffs(input: ScheduleInput, playoffs: Awaited<ReturnType<typeof loadPlacedPlayoffs>>): { input: ScheduleInput; fixed: Assignment } {
+  const slots = new Map(input.slots.map((s) => [s.id, s]));
+  const fixed: Assignment = {};
+  for (const g of playoffs) {
+    const s = g.fieldSlot!;
+    fixed[playoffKey(g)] = slotId(s);
+    if (!slots.has(slotId(s))) slots.set(slotId(s), { id: slotId(s), day: s.day, start: s.start, field: s.fieldId });
+  }
+  return { input: { ...input, games: [...input.games, ...playoffs.map(playoffGame)], slots: [...slots.values()] }, fixed };
 }
 
 interface ResultCells { matchId: string; round: number; index: number; aRuns: number | null; bRuns: number | null; forfeit: 'a' | 'b' | null }
