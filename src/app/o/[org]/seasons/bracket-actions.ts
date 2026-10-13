@@ -11,9 +11,11 @@ import { Refused } from '@/core/errors';
 import { buildBracket, clearResult, recordResult } from '@/lib/league/bracket';
 import { slotId } from '@/lib/league/build-input';
 import { reschedule } from '@/lib/league/schedule';
-import type { Bracket, Game } from '@/lib/league/types';
+import type { Bracket } from '@/lib/league/types';
 import { whyUnplaced } from '@/lib/league/unplaced';
-import { cells, loadBrackets, replay, standingsFingerprint, type Seeding } from './bracket-load';
+import { enqueue } from '@/modules/notifications/outbox';
+import { roundName } from '@/app/l/public-league';
+import { cells, loadBrackets, playoffGame, playoffKey, replay, standingsFingerprint, type Seeding } from './bracket-load';
 import { dayIn, loadRainout } from './rainout-load';
 
 // Playoffs (BRKT-01..05, D-15, D-32). Same permission as setup and scores (D-27, D-30).
@@ -85,7 +87,7 @@ export const placeBracketGames = orgAction(PERM, z.object({ bracketId: ref('brac
   const r = await loadRainout(ctx, seasonId);
   const all = await db.bracketGame.findMany({
     where: { bracket: { division: { seasonId } }, aTeamId: { not: null }, bTeamId: { not: null }, ...inOrg(ctx) },
-    include: { fieldSlot: true, bracket: { select: { divisionId: true, seeding: true } } },
+    include: { fieldSlot: { include: { field: true } }, bracket: { select: { divisionId: true, seeding: true } } },
   });
   type Row = (typeof all)[number];
   const scored = (g: Row) => g.aRuns !== null;
@@ -94,12 +96,7 @@ export const placeBracketGames = orgAction(PERM, z.object({ bracketId: ref('brac
   // Where they are and staying there. Another bracket's game in a closed slot is left out: it is that bracket's to place.
   const fixed = all.filter((g) => g.fieldSlot && (scored(g) || g.fieldSlot.status !== 'closed'));
 
-  const key = (g: Row) => `P:${g.bracketId}:${g.matchId}`;
-  const game = (g: Row): Game => {
-    const seeds = (g.bracket.seeding as unknown as Seeding).teams;
-    const [home, away] = [g.aTeamId!, g.bTeamId!].sort((x, y) => seeds.indexOf(x) - seeds.indexOf(y)); // BRKT-02: the better seed is home
-    return { key: key(g), round: g.round, leg: 1, home: home!, away: away!, division: g.bracket.divisionId };
-  };
+  const [key, game] = [playoffKey, playoffGame];
   const NONE = 'unplaced';
   const current = { ...r.current };
   for (const d of r.displaced) delete current[d.key]; // a rained-out season game is the rainout tool's to move, not this action's
@@ -115,11 +112,32 @@ export const placeBracketGames = orgAction(PERM, z.object({ bracketId: ref('brac
   const input = { ...r.rescheduleInput, slots, games: [...r.rescheduleInput.games, ...fixed.map(game), ...todo.map(game)] };
   const out = reschedule({ input, current, removedSlotIds: [NONE], seed: 0 });
 
-  const placed = todo.filter((g) => out.assignment[key(g)]);
+  const placed = todo.filter((g) => out.assignment[key(g)]).map((g) => ({ g, slotRowId: r.slotRowIds.get(out.assignment[key(g)]!)! }));
+  // BRKT-07: one notice per team, naming each of its games with the old slot and the new one, as publish does (RAIN-04).
+  const [teams, slotRows] = await Promise.all([
+    db.team.findMany({ where: { id: { in: placed.flatMap(({ g }) => [g.aTeamId!, g.bTeamId!]) }, ...inOrg(ctx) }, select: { id: true, name: true, contactEmail: true } }),
+    db.fieldSlot.findMany({ where: { id: { in: placed.map((x) => x.slotRowId) }, ...inOrg(ctx) }, include: { field: true } }),
+  ]);
+  const where = (s: { day: string; start: string; field: { name: string } }) => `${s.day} ${s.start} at ${s.field.name}`;
+  const notices = new Map<string, { name: string; to: string | null; lines: string[] }>();
+  for (const { g, slotRowId } of placed) {
+    const { home, away } = game(g);
+    const [h, a] = [home, away].map((id) => teams.find((t) => t.id === id)!);
+    const line = `${roundName(g.round, g.index, Math.log2(b.size))}, ${h!.name} v ${a!.name}: was ${g.fieldSlot ? where(g.fieldSlot) : 'not scheduled'}, now ${where(slotRows.find((s) => s.id === slotRowId)!)}.`;
+    for (const t of [h!, a!]) {
+      if (!notices.has(t.id)) notices.set(t.id, { name: t.name, to: t.contactEmail, lines: [] });
+      notices.get(t.id)!.lines.push(line);
+    }
+  }
+  const reachable = [...notices.values()].filter((n) => n.to);
   try {
     await db.$transaction(async (tx) => {
-      for (const g of placed) await tx.bracketGame.update({ where: { id: g.id }, data: { fieldSlotId: r.slotRowIds.get(out.assignment[key(g)]!)! } });
-      await audit(ctx, 'bracket.games_placed', { targetType: 'division', targetId: b.divisionId, data: { bracketId: b.id, placed: placed.map((g) => g.matchId), unplaced: out.unplaced.length } }, tx);
+      for (const { g, slotRowId } of placed) await tx.bracketGame.update({ where: { id: g.id }, data: { fieldSlotId: slotRowId } });
+      // In the same transaction, so a notice exists exactly when the placement does.
+      for (const n of reachable) {
+        await enqueue({ channel: 'email', to: n.to!, template: 'notice', orgId: ctx.orgId, data: { subject: `${r.season.name}: playoff game for ${n.name}`, body: `${b.division.name} playoffs\n\n${n.lines.join('\n')}` } }, tx);
+      }
+      await audit(ctx, 'bracket.games_placed', { targetType: 'division', targetId: b.divisionId, data: { bracketId: b.id, placed: placed.map(({ g }) => g.matchId), unplaced: out.unplaced.length, notices: reachable.length } }, tx);
     });
   } catch (e) {
     // One playoff game per slot is a unique index (D-11 style).
@@ -128,7 +146,9 @@ export const placeBracketGames = orgAction(PERM, z.object({ bracketId: ref('brac
   }
   revalidatePath(page(ctx.slug, seasonId));
   const why = todo.filter((g) => !out.assignment[key(g)]).map((g) => ` ${g.matchId}: ${whyUnplaced(input, out.assignment, key(g))}`);
-  return { notice: `Placed ${placed.length} of ${todo.length} games.${why.join('')}` };
+  const silent = notices.size - reachable.length;
+  const told = placed.length ? ` ${reachable.length} team notices queued${silent ? `, ${silent} teams have no contact email` : ''}.` : '';
+  return { notice: `Placed ${placed.length} of ${todo.length} games.${told}${why.join('')}` };
 });
 
 /** Lock the bracket, rebuild it from its rows, make one engine call, store what the engine returns. */

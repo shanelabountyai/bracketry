@@ -10,8 +10,9 @@ import { db } from '@/core/db';
 import { Refused } from '@/core/errors';
 import { slotId } from '@/lib/league/build-input';
 import { scoreSchedule } from '@/lib/league/schedule';
-import { isPublishable, type ScoreReport } from '@/lib/league/types';
+import { isPublishable, type Game, type ScoreReport, type Slot } from '@/lib/league/types';
 import { enqueue } from '@/modules/notifications/outbox';
+import { isPlayoffKey, playoffGame, playoffKey } from './bracket-load';
 import { loadSeasonInput } from './load-input';
 import { SCORED } from './rainout-load';
 
@@ -33,15 +34,15 @@ export const publish = orgAction(
 
     // A draft can go stale between proposing and publishing: a slot closed, or a score entered, since it was made.
     const prev = await db.scheduleVersion.findFirst({ where: { seasonId: v.seasonId, status: 'published', ...inOrg(ctx) }, select: { id: true } });
-    const team = { select: { id: true, name: true, contactEmail: true } };
+    const team = { select: { id: true, name: true, contactEmail: true, divisionId: true } };
     const rows = await db.placement.findMany({
       where: { scheduleVersionId: { in: [v.id, ...(prev ? [prev.id] : [])] }, ...inOrg(ctx) },
       select: {
         scheduleVersionId: true,
         gameId: true,
         fieldSlotId: true,
-        fieldSlot: { select: { day: true, start: true, status: true, field: { select: { name: true } } } },
-        game: { select: { homeTeam: team, awayTeam: team, results: { where: SCORED, select: { id: true }, take: 1 } } },
+        fieldSlot: { select: { day: true, start: true, fieldId: true, status: true, field: { select: { name: true } } } },
+        game: { select: { key: true, round: true, leg: true, divisionId: true, homeTeam: team, awayTeam: team, results: { where: SCORED, select: { id: true }, take: 1 } } },
       },
     });
     const was = new Map(rows.filter((p) => p.scheduleVersionId === prev?.id).map((p) => [p.gameId, p]));
@@ -52,6 +53,30 @@ export const publish = orgAction(
     const changes = prev ? mine.filter((p) => was.get(p.gameId)?.fieldSlotId !== p.fieldSlotId) : [];
     const rewritten = changes.filter(played).length;
     if (rewritten) throw new Refused(`Version ${v.number} moves ${rewritten} games that already have a score. Propose a new version.`);
+
+    // BRKT-06: a playoff game may have taken a slot since the draft was made. The draft and every playoff game that
+    // holds a slot are scored as one schedule, and a hard violation between one of each refuses (D-4).
+    const playoffs = (
+      await db.bracketGame.findMany({
+        where: { bracket: { division: { seasonId: v.seasonId } }, aTeamId: { not: null }, bTeamId: { not: null }, fieldSlotId: { not: null }, ...inOrg(ctx) },
+        include: { fieldSlot: true, bracket: { select: { divisionId: true, seeding: true } } },
+      })
+    ).filter((g) => g.aRuns !== null || g.fieldSlot!.status !== 'closed'); // an unplayed one in a closed slot is about to be placed again
+    if (playoffs.length) {
+      const { input } = await loadSeasonInput(ctx, v.seasonId);
+      const engineSlot = (s: { day: string; start: string; fieldId: string }): Slot => ({ id: slotId(s), day: s.day, start: s.start, field: s.fieldId });
+      const games: Game[] = mine.map(({ game: g }) => ({ key: g.key, round: g.round, leg: g.leg === 2 ? 2 : 1, home: g.homeTeam.id, away: g.awayTeam.id, division: g.divisionId, ...(g.awayTeam.divisionId !== g.divisionId && { awayDivision: g.awayTeam.divisionId }) }));
+      const held = [...mine.map((p) => [p.game.key, engineSlot(p.fieldSlot)] as const), ...playoffs.map((g) => [playoffKey(g), engineSlot(g.fieldSlot!)] as const)];
+      const report = scoreSchedule(
+        { games: [...games, ...playoffs.map(playoffGame)], slots: [...new Map(held.map(([, s]) => [s.id, s])).values()], blackouts: input.blackouts, rules: input.rules },
+        Object.fromEntries(held.map(([key, s]) => [key, s.id])),
+      );
+      const clashes = report.hard.filter((h) => h.games.some(isPlayoffKey) && !h.games.every(isPlayoffKey));
+      if (clashes.length) {
+        const at = [...new Set(clashes.flatMap((h) => h.games.filter(isPlayoffKey)).map((key) => held.find(([k]) => k === key)![1]).map((s) => `${s.day} ${s.start}`))].sort();
+        throw new Refused(`Version ${v.number} clashes with the playoff games placed on ${at.join(', ')}: a shared slot, or a team in two games. Propose a new version.`);
+      }
+    }
 
     // One notice per team, naming each of its games with the old slot and the new one.
     const where = (p: (typeof rows)[number]) => `${p.fieldSlot.day} ${p.fieldSlot.start} at ${p.fieldSlot.field.name}`;

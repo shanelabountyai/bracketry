@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { advanceClock } from '@/core/clock';
 import { db } from '@/core/db';
-import { generateBracket } from '@/app/o/[org]/seasons/bracket-actions';
+import { generateBracket, placeBracketGames } from '@/app/o/[org]/seasons/bracket-actions';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
 import { blankPublicFairness, blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, roundName, teamCalendar, toPublicFairness, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
@@ -120,6 +120,23 @@ describe('loadPublicLeague', () => {
     expect(d!.standings[0]).toMatchObject({ rank: 1, team: 'T0', wins: 3, losses: 0 });
     expect(d!.bracket).toMatchObject([{ id: 'R1M1', label: 'Final', a: '(1) T0', b: '(2) T1', slot: null, winner: null }]);
     expect(d!.cut).toBe(2); // PUB-08: the bracket was seeded with two teams
+
+    // ICAL-02: unplaced, the final is in no feed; placed, it is in its two teams' feeds and nobody else's.
+    expect(league.playoffGames).toEqual([]);
+    advanceClock(new Date('2026-11-11T18:00:00Z').getTime() - Date.now());
+    await signInAs(ownerId, { mfa: true });
+    const fieldId = (await db.field.findFirstOrThrow()).id;
+    await db.fieldSlot.create({ data: { orgId, seasonId, fieldId, day: '2026-11-17', start: '18:00' } });
+    await placeBracketGames(SLUG, { bracketId: (await db.bracket.findFirstOrThrow()).id });
+    const placed = await load();
+    expect(JSON.stringify(placed)).not.toMatch(SECRET);
+    expect(placed.playoffGames).toMatchObject([{ day: '2026-11-17', start: '18:00', field: 'F1', division: 'Open · Final', home: 'T0', away: 'T1', homeRuns: null }]);
+    expect(placed.games).toHaveLength(6);
+    const final = 'DTSTART;TZID=America/Chicago:20261117T180000\r\nDURATION:PT60M\r\nSUMMARY:T0 v T1\r\nLOCATION:F1\r\nDESCRIPTION:Open · Final';
+    expect(teamCalendar(placed, 'T0')).toContain(final);
+    expect(teamCalendar(placed, 'T1')).toContain(final);
+    expect(teamCalendar(placed, 'T2')).not.toContain('Final');
+    expect(teamCalendar(placed, 'T2')).not.toMatch(SECRET);
   });
 
   it('gives each team its games per start time and per field, for the published version (PUB-10)', async () => {
@@ -182,7 +199,7 @@ describe('teamCalendar (ICAL-01)', () => {
 
   it('escapes text and folds long lines', () => {
     const game = { ...blankPublicGame(), uid: 'u', day: '2026-10-06', start: '18:00', field: 'North; Diamond, 2', division: 'Open', home: 'A'.repeat(60), away: 'B'.repeat(60) };
-    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], starts: [], fields: [], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], cut: null, bracket: null, champion: null, fairness: [] }] }, game.home)!;
+    const ics = teamCalendar({ season: 'Fall', timezone: 'America/Chicago', gameMinutes: 75, publishedAt: new Date('2026-10-01T12:00:00Z'), games: [game], playoffGames: [], starts: [], fields: [], divisions: [{ name: 'Open', standings: [{ ...blankPublicStanding(), team: game.home }], cut: null, bracket: null, champion: null, fairness: [] }] }, game.home)!;
     expect(ics).toContain('LOCATION:North\\; Diamond\\, 2\r\n');
     expect(ics).toContain('DTSTAMP:20261001T120000Z\r\nDTSTART;TZID=America/Chicago:20261006T180000\r\nDURATION:PT75M\r\n');
     expect(ics.split('\r\n').every((l) => l.length <= 74)).toBe(true);

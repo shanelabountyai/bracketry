@@ -116,7 +116,7 @@ describe('placing and playing', () => {
     await db.blackout.create({ data: { orgId, teamId: team.T3!, day: '2026-11-17' } });
     expect(await score('R1M1', 5, 1)).toEqual({ error: expect.stringContaining('Place this game') });
 
-    expect(await place()).toEqual({ notice: 'Placed 2 of 2 games.' });
+    expect(await place()).toEqual({ notice: 'Placed 2 of 2 games. 0 team notices queued, 4 teams have no contact email.' });
     let g = await games();
     expect(g.R1M1!.fieldSlot!.day).toBe('2026-11-24'); // T0 v T3: the blackout rules out Nov 17
     expect(g.R1M2!.fieldSlot!.day).toBe('2026-11-17');
@@ -139,7 +139,7 @@ describe('placing and playing', () => {
     expect(await place()).toEqual({ notice: expect.stringContaining('Placed 0 of 1 games. R2M1: No free slot is left') });
     await slot('2026-12-01', '18:00');
     const before = [g.R1M1!.fieldSlotId, g.R1M2!.fieldSlotId];
-    expect(await place()).toEqual({ notice: 'Placed 1 of 1 games.' });
+    expect(await place()).toEqual({ notice: 'Placed 1 of 1 games. 0 team notices queued, 2 teams have no contact email.' });
     g = await games();
     expect([g.R1M1!.fieldSlotId, g.R1M2!.fieldSlotId]).toEqual(before);
     expect(g.R2M1!.fieldSlot!.day).toBe('2026-12-01');
@@ -174,7 +174,7 @@ describe('placing and playing', () => {
     await slot('2026-11-24', '18:00');
     await slot('2026-11-24', '19:30');
 
-    expect(await place()).toEqual({ notice: 'Placed 2 of 2 games.' });
+    expect(await place()).toEqual({ notice: 'Placed 2 of 2 games. 0 team notices queued, 4 teams have no contact email.' });
     let g = await games();
     for (const m of [g.R1M1!, g.R1M2!]) {
       const busy = ahead.filter((p) => p.fieldSlot.day === m.fieldSlot!.day).flatMap((p) => [p.game.homeTeamId, p.game.awayTeamId]);
@@ -185,9 +185,50 @@ describe('placing and playing', () => {
     const rained = g.R1M1!.fieldSlot!.day;
     await closeDay(SLUG, { seasonId, day: rained });
     const stays = g.R1M2!.fieldSlot!.day === rained ? null : g.R1M2!.fieldSlotId; // on another day, R1M2 must not move (D-12)
-    expect(await place()).toEqual({ notice: stays ? 'Placed 1 of 1 games.' : 'Placed 2 of 2 games.' });
+    expect(await place()).toEqual({ notice: expect.stringContaining(stays ? 'Placed 1 of 1 games.' : 'Placed 2 of 2 games.') });
     g = await games();
     for (const m of [g.R1M1!, g.R1M2!]) expect([m.fieldSlot!.status, m.fieldSlot!.day === rained]).toEqual(['open', false]);
     if (stays) expect(g.R1M2!.fieldSlotId).toBe(stays);
   });
 });
+
+describe('playoff games, the outbox and publish (L-034)', () => {
+  it('queues a notice per team on placement, and refuses a draft that clashes with a placed playoff game', async () => {
+    // T1 v T3 loses its score (a void), so a draft may move it. T0 and T1 are still the top two: the final is T0 v T1.
+    const scored = await db.gameResult.findFirstOrThrow({ where: { game: { OR: [{ homeTeamId: team.T1, awayTeamId: team.T3 }, { homeTeamId: team.T3, awayTeamId: team.T1 }] } } });
+    await db.gameResult.create({ data: { orgId, gameId: scored.gameId, homeRuns: 0, awayRuns: 0, voided: true, supersedesId: scored.id, reason: 'Wrong game', enteredBy: crypto.randomUUID() } });
+    const v1 = await db.scheduleVersion.findFirstOrThrow({ include: { placements: true } });
+    /** A draft that is the published version with T1 v T3 moved to `to`. */
+    const draft = async (number: number, to: string) => {
+      const v = await db.scheduleVersion.create({ data: { orgId, seasonId, number, seed: 1n, inputHash: 'x', fingerprint: 'y', report: v1.report as object, iterations: 0, accepted: 0, createdBy: ownerId } });
+      await db.placement.createMany({ data: v1.placements.map((p) => ({ orgId, seasonId, scheduleVersionId: v.id, gameId: p.gameId, fieldSlotId: p.gameId === scored.gameId ? to : p.fieldSlotId })) });
+      return v.id;
+    };
+    // The two drafts are made while the slots are free; the final is placed afterwards, on the only slot that exists yet.
+    const sameSlot = await slot('2026-11-17', '18:00');
+    const onSlot = await draft(2, sameSlot.id);
+    await db.team.update({ where: { id: team.T0! }, data: { contactEmail: 'coach0@example.test' } });
+    await seed(2);
+    expect(await place()).toEqual({ notice: 'Placed 1 of 1 games. 1 team notices queued, 1 teams have no contact email.' }); // BRKT-07
+    expect((await games()).R1M1!.fieldSlotId).toBe(sameSlot.id);
+    const sent = await db.outbox.findMany();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ to: 'coach0@example.test', data: { subject: 'Fall: playoff game for T0', body: 'Open playoffs\n\nFinal, T0 v T1: was not scheduled, now 2026-11-17 18:00 at F1.' } });
+
+    // BRKT-06: the same slot, then the same day for T1, then a clear day.
+    const sameDay = await draft(3, (await slot('2026-11-17', '19:30')).id);
+    const clear = await draft(4, (await slot('2026-11-24', '18:00')).id);
+    for (const versionId of [onSlot, sameDay]) {
+      expect(await publish(SLUG, { versionId, reason: 'Makeup' })).toEqual({ error: expect.stringContaining('clashes with the playoff games placed on 2026-11-17 18:00') });
+    }
+    expect(await db.scheduleVersion.count({ where: { status: 'draft' } })).toBe(3);
+    expect(await publish(SLUG, { versionId: clear, reason: 'Makeup' })).toEqual({ notice: expect.stringContaining('Version 4 is published') });
+
+    // A closed slot: the game is placed again and the notice names the slot it left.
+    await closeDay(SLUG, { seasonId, day: '2026-11-17' });
+    await slot('2026-12-01', '18:00');
+    await place();
+    expect((await db.outbox.findMany({ where: { to: 'coach0@example.test' } })).map((m) => (m.data as { body: string }).body)).toContain('Open playoffs\n\nFinal, T0 v T1: was 2026-11-17 18:00 at F1, now 2026-12-01 18:00 at F1.');
+  });
+});
+

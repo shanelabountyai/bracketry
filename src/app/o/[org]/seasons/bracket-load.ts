@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { OrgCtx } from '@/core/authz/guards';
 import { db } from '@/core/db';
 import { buildBracket, recordResult } from '@/lib/league/bracket';
-import type { Bracket, BracketMatch, BracketSlot, StandingsRow } from '@/lib/league/types';
+import type { Bracket, BracketMatch, BracketSlot, Game, StandingsRow } from '@/lib/league/types';
 import { SCORED } from './rainout-load';
 import { loadStandings } from './standings-load';
 
@@ -15,6 +15,17 @@ export interface Seeding {
 /** D-15: what the seeding was frozen from. Any change to the division's table changes it. */
 export const standingsFingerprint = (rows: readonly StandingsRow[]) =>
   createHash('sha256').update(rows.map((r) => [r.rank, r.team, r.played, r.wins, r.losses, r.ties, r.points, r.runsFor, r.runsAgainst, r.runDiff].join('|')).join('\n')).digest('hex');
+
+interface PlayoffRow { bracketId: string; matchId: string; round: number; aTeamId: string | null; bTeamId: string | null; bracket: { divisionId: string; seeding: unknown } }
+/** A playoff game's key in an engine input. No season game's key starts with `P:`. */
+export const playoffKey = (g: Pick<PlayoffRow, 'bracketId' | 'matchId'>) => `P:${g.bracketId}:${g.matchId}`;
+export const isPlayoffKey = (key: string) => key.startsWith('P:');
+/** A playoff game whose two teams are known, as the engine's game, so `scoreSchedule` judges it like any other (BRKT-04, D-4). */
+export function playoffGame(g: PlayoffRow): Game {
+  const seeds = (g.bracket.seeding as Seeding).teams;
+  const [home, away] = [g.aTeamId!, g.bTeamId!].sort((x, y) => seeds.indexOf(x) - seeds.indexOf(y)); // BRKT-02: the better seed is home
+  return { key: playoffKey(g), round: g.round, leg: 1, home: home!, away: away!, division: g.bracket.divisionId };
+}
 
 interface ResultCells { matchId: string; round: number; index: number; aRuns: number | null; bRuns: number | null; forfeit: 'a' | 'b' | null }
 

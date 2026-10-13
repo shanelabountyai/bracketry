@@ -127,6 +127,8 @@ export interface PublicLeague {
   publishedAt: Date;
   /** Regular-season games of the published version, in day, time and field order. */
   games: PublicGame[];
+  /** Playoff games with a slot and two known teams, for the calendar feed (ICAL-02). No score: the bracket carries it. */
+  playoffGames: PublicGame[];
   /** The columns of every division's `fairness` rows (PUB-10): start times, and field names. */
   starts: string[];
   fields: string[];
@@ -179,12 +181,21 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
       return toPublicGame(p, old && old.fieldSlotId !== p.fieldSlotId ? old.fieldSlot : null);
     })
     .sort((a, b) => (order(a) < order(b) ? -1 : 1));
+  // ICAL-02: through the same projection as a season game, the round in the division's place, the better seed at home (BRKT-02).
+  const playoffGames = s.byDivision.flatMap(({ division, name, bracket: b }) =>
+    (b ? b.row.games : []).flatMap((g) => {
+      if (!g.fieldSlot || !g.aTeamId || !g.bTeamId) return [];
+      const [home, away] = [g.aTeamId, g.bTeamId].sort((x, y) => b!.seeds.indexOf(x) - b!.seeds.indexOf(y)).map((id) => ({ name: name(id), divisionId: division.id }));
+      return [toPublicGame({ gameId: g.id, fieldSlot: g.fieldSlot, game: { division: { name: `${division.name} · ${roundName(g.round, g.index, b!.bracket.rounds.length)}` }, homeTeam: home!, awayTeam: away!, results: [] } }, null)];
+    }),
+  );
   return {
     season: s.season.name,
     timezone: s.season.timezone,
     gameMinutes: s.season.gameMinutes,
     publishedAt: version.publishedAt ?? now(),
     games,
+    playoffGames,
     starts: q.quality.starts,
     fields: fieldIds.map(q.name),
     divisions: s.byDivision.map(({ division, rows: table, name, bracket: b }) => {
@@ -211,7 +222,7 @@ const icsText = (v: string) => v.replace(/[\\;,]/g, '\\$&').replace(/\r?\n/g, '\
 /**
  * One team's games of the published version as an iCalendar feed (ICAL-01), or null for a name that is
  * not a team of this season. Times are the season's wall times with its TZID, so nothing here converts
- * an instant (D-6). Regular-season games only, like the page's schedule list (D-33).
+ * an instant (D-6). Season games, then the team's placed playoff games (ICAL-02).
  */
 export function teamCalendar(league: PublicLeague, team: string): string | null {
   if (!league.divisions.some((d) => d.standings.some((r) => r.team === team))) return null;
@@ -221,7 +232,7 @@ export function teamCalendar(league: PublicLeague, team: string): string | null 
     'VERSION:2.0',
     'PRODID:-//Bracketry//League schedule//EN',
     `X-WR-CALNAME:${icsText(`${team} · ${league.season}`)}`,
-    ...league.games.filter((g) => g.home === team || g.away === team).flatMap((g) => [
+    ...[...league.games, ...league.playoffGames].filter((g) => g.home === team || g.away === team).flatMap((g) => [
       'BEGIN:VEVENT',
       `UID:${g.uid}@bracketry`,
       `DTSTAMP:${stamp}`,

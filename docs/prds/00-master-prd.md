@@ -125,6 +125,8 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **BRKT-03** The seeding is frozen when the bracket is generated and stores the standings it came from. A later result correction does not silently reseed; it raises a warning with a "regenerate bracket" action, allowed only before the first playoff result.
 - **BRKT-04** Playoff games are placed into slots with the same hard rules as the season (one game per slot, a team once per day, blackouts), round by round.
 - **BRKT-05** A result feeds the winner forward. Ties are refused. A forfeit advances the other team. A result can be corrected until the next game in that line has a result.
+- **BRKT-06** (L-034) Publish scores the draft together with every playoff game that holds a slot, through `scoreSchedule` (D-4). A draft that puts a season game in a playoff game's slot, or a team in a season game and a playoff game at the same time or past the daily limit, is refused and nothing is published. Only a clash between a season game and a playoff game refuses here; the draft's own report is checked as before.
+- **BRKT-07** (L-034) Placing playoff games queues one notice per team in them through the outbox, in the same transaction as the placement, naming the round, the two teams, the old slot (or "not scheduled") and the new one. The action reports how many notices were queued and how many teams have no contact email.
 
 ### PUB — public pages
 
@@ -150,6 +152,7 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **WHATIF-01** What-if standings: enter hypothetical results for remaining games and see the table. Pure-function reuse.
 - **WHATIF-02** Clinched and eliminated flags on points, by exhaustive enumeration when 12 or fewer games remain in the division, otherwise not shown. Stated as such on the page.
 - **ICAL-01** A subscribable calendar feed per team for the published version.
+- **ICAL-02** (L-034) A team's feed also carries its playoff games that have a slot and two known teams, described by division and round (PUB-09), the better seed at home (BRKT-02). They reach the feed through the same allowlist projection as a season game (PUB-03). A game whose teams are not yet known is not in any feed.
 - **BENCH-01** The same season inputs are given to an LLM, which is asked for a schedule as JSON. Its answer is scored by `scoreSchedule` and shown beside the generator's: hard violations, unplaced games, soft cost, cost in dollars, seconds. This is the write-up's "when not to use a model" evidence. No result is assumed in advance.
 - **DBL-01** Crossover games between divisions.
 
