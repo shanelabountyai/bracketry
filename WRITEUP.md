@@ -39,7 +39,7 @@ The unexplained one is smaller and still open: the first full `npm test` after t
 
 ## What is open
 
-P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) and L-024 (a calendar feed per team) were built after closure; L-026 (crossover games between divisions, counted in each team's own standings) followed; L-025 (the LLM benchmark) ran once; its table is in the per-item notes. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
+P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) and L-024 (a calendar feed per team) were built after closure; L-026 (crossover games between divisions, counted in each team's own standings) followed; L-025 (the LLM benchmark) ran once; its table is in the per-item notes. A review from the three personas' chairs on 2026-10-12 added fifteen unbuilt rows (L-027 to L-041) to the backlog; the largest is that a team cannot be edited or withdrawn after it is added. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
 
 ## Per-item notes
 

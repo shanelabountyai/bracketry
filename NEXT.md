@@ -2,7 +2,7 @@
 
 The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; L-023 to L-026 are done. Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
 
-PICK UP HERE: nothing is queued. The P1 backlog is done (L-023 to L-026). The next thing is the owner's call: close again, or pick from the open notes below.
+PICK UP HERE: L-027, score entry fixes (S; Sonnet): the first row of the P2 section in `docs/prds/06-backlog.md`, added on 2026-10-12 from three persona reviews. The P2 rows have no story IDs, so write the acceptance criteria into `00-master-prd.md` first. L-031, L-033, L-036 and L-039 each need a decision before code; L-040 and L-041 are blocked outside this repo.
 
 Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The three LinkedIn drafts (Ledger 114, 115 and 116) were drafted without a review pass by the owner. The Ledger's project list has no `bracketry` entry. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 

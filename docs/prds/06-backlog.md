@@ -57,3 +57,29 @@ One item per session, top to bottom. ✅ built and committed, ⬜ not started (`
 | 25 | ✅ L-024 | Calendar feed per team | ICAL-01 | S | L-019 |
 | 26 | ✅ L-025 | LLM-against-generator benchmark, scored by `scoreSchedule`, with cost and time. Needs the owner's go-ahead (OQ-2) | BENCH-01 | M | L-010 |
 | 27 | ✅ L-026 | Crossover games between divisions | DBL-01 | M | L-013 |
+
+## P2: persona review (2026-10-12)
+
+From three read-only reviews in the chairs of the PRD's personas (commissioner, scorekeeper, coach/parent) after L-026. They read the docs and the screens; nothing was run, and phone layout was judged from markup only. These rows have no story IDs: write the acceptance criteria into `00-master-prd.md` at the start of the item. Quick fixes first, then by how hard a season breaks without it. Two review claims were checked and dropped: the public page shows no contact details, and crossover rounds can be set on the season page.
+
+| # | ID | Item | Persona | Size | Model | Depends on |
+|---|---|---|---|---|---|---|
+| 28 | ⬜ L-027 | Score entry fixes: run boxes empty and required (an untouched form saves 0-0 today); "correction" ticked and the reason shown when a score exists; team names in place of "home/away" on the run boxes and the forfeit choice; "Tie" echoed on a saved tie; history times in league time, not UTC; a bracket correction asks for a reason like a season one | Scorekeeper | S | Sonnet | L-015 |
+| 29 | ⬜ L-028 | Results for tonight: games on or before today with no score first, grouped by field; no form on a future game; a count of played games still unscored | Scorekeeper | S | Sonnet | L-027 |
+| 30 | ⬜ L-029 | Plain Generate is not offered once any game has a score; only "Regenerate the rest" (closes the open note from L-017) | Commissioner | S | Sonnet | L-017 |
+| 31 | ⬜ L-030 | Edit a team: name and contact email; a team with no contact email is flagged on the teams list at setup, not only counted at publish | Commissioner | S | Sonnet | L-012 |
+| 32 | ⬜ L-031 | A score entered on the wrong game: a confirm line before saving, and a way to void a season game's score as a new superseding row, never a delete (D-13). Needs a decision on what a voided game shows | Scorekeeper | M | Opus | L-027 |
+| 33 | ⬜ L-032 | Public page on a phone: a per-team link that opens on that team with its next game; dates as "Sat Oct 18"; an "Updated" time and a list of this week's changes; standings that fit (the reason under the team name); the cut line; round names in the bracket | Coach / parent | M | Sonnet | L-019 |
+| 34 | ⬜ L-033 | A rained-out day shows as postponed on the public page as soon as its slots are closed, before a new version is published. Needs a decision: it adds slot status to the public projection (D-33) | Coach / parent, commissioner | M | Opus | L-017, L-019 |
+| 35 | ⬜ L-034 | Publish looks at playoff games; playoff games are in the calendar feed and get a notice (closes the open notes from L-018 and L-024) | Commissioner, coach / parent | M | Opus | L-018, L-024 |
+| 36 | ⬜ L-035 | Public fairness table: each team's count of games per start time and per field, from `scheduleQuality` and nothing else (D-4) | Coach / parent | S | Sonnet | L-020 |
+| 37 | ⬜ L-036 | A team withdraws mid-season: its remaining games are forfeited or removed and the rest rescheduled around it, with played results kept. Needs a spec section and a decision before any code | Commissioner | L | Opus | L-031, L-017 |
+| 38 | ⬜ L-037 | Editor for points, the run-difference cap and forfeit settings (STAND-02; open from L-016) | Commissioner | M | Opus | L-016 |
+| 39 | ⬜ L-038 | Copy a season's divisions, teams and fields into a new season | Commissioner | S | Sonnet | L-012 |
+| 40 | ⬜ L-039 | A private preview before a season is public. Reopens D-33: the owner decides first | Commissioner | M | Opus | L-019 |
+| 41 | ⬜ L-040 | Scorekeeper role: enter and correct scores and nothing else. Blocked: needs a permission added in `saas-foundation` (D-30), not here | Scorekeeper, commissioner | M | Opus | template release |
+| 42 | ⬜ L-041 | Notices leave the outbox: one confirmed send with a mail key. Blocked while the project is not deployed (D-36) | Commissioner | S | Sonnet | deployment |
+
+Also raised and not made an item: the shared 60-per-15-minutes limit on public reads (a parents' group on one field's wifi shares an address) is a template edit, as in the open note from L-019. Not asked for by any persona: the PRD's P2 list (double elimination, cross-division playoffs, a real solver, umpires, per-field time preferences).
+
+What the three said to leave alone: the shared rank with no coin flip and the reason column; a rainout that moves only the displaced games, with the compare step; the append-only score history; calendar entries that move instead of duplicating.
