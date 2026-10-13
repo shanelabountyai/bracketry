@@ -4,7 +4,7 @@ The P0 backlog is done and the project was closed at L-022 (2026-10-12), then re
 
 PICK UP HERE: nothing is queued. The P1 backlog is done (L-023 to L-026). The next thing is the owner's call: close again, or pick from the open notes below.
 
-Needs the owner: `ANTHROPIC_API_KEY` is still at the end of `.env.local`; D-42 says to remove it now L-025 is done. the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The two LinkedIn drafts (Ledger 114 and 115) were drafted without a review pass by the owner. The Ledger's project list has no `bracketry` entry. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
+Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The two LinkedIn drafts (Ledger 114 and 115) were drafted without a review pass by the owner. The Ledger's project list has no `bracketry` entry. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
 Open from L-016: no editor for points, run-diff cap or forfeit settings (STAND-02).
 
