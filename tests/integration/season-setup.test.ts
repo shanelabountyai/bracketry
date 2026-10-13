@@ -3,7 +3,7 @@ import { db } from '@/core/db';
 import { NavSignal } from '../helpers/next';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
-import { addBlackout, addDivision, addField, addHoliday, addSeason, addSlot, addSlotPattern, addTeam, saveRules, setSlotOpen } from '@/app/o/[org]/seasons/actions';
+import { addBlackout, addDivision, addField, addHoliday, addSeason, addSlot, addSlotPattern, addTeam, editTeam, saveRules, setSlotOpen } from '@/app/o/[org]/seasons/actions';
 
 // L-012: season setup through the real actions. Window 2026-10-05 (Mon) to 2026-10-18 (Sun): two Tuesdays.
 const SLUG = 'league';
@@ -59,6 +59,23 @@ describe('season setup', () => {
     expect(await addBlackout(SLUG, { teamId: tiger, day: '2026-10-12', reason: '' })).toEqual({ error: 'That team already has a blackout on that day.' });
     expect(await addHoliday(SLUG, { seasonId, day: '2026-10-12', reason: 'Holiday' })).toEqual({ notice: 'Blackout added for 1 of 2 teams.' });
     expect(await db.blackout.count()).toBe(2);
+  });
+
+  it('edits a team name and email, clears the email, and refuses a taken name or another org (SEASON-07)', async () => {
+    await addDivision(SLUG, { seasonId, name: 'Open', legs: '1' });
+    const divisionId = (await db.division.findFirstOrThrow()).id;
+    for (const name of ['Tigers', 'Cubs']) await addTeam(SLUG, { divisionId, name, contactEmail: '' });
+    const teamId = (await db.team.findFirstOrThrow({ where: { name: 'Tigers' } })).id;
+    await editTeam(SLUG, { teamId, name: 'Lions', contactEmail: 'coach@example.test' });
+    expect(await db.team.findUniqueOrThrow({ where: { id: teamId } })).toMatchObject({ name: 'Lions', contactEmail: 'coach@example.test', divisionId });
+    await editTeam(SLUG, { teamId, name: 'Lions', contactEmail: '' });
+    expect((await db.team.findUniqueOrThrow({ where: { id: teamId } })).contactEmail).toBeNull();
+    expect(await editTeam(SLUG, { teamId, name: 'Cubs', contactEmail: '' })).toEqual({ error: 'A team with that name already exists in this season.' });
+    expect(await editTeam(SLUG, { teamId, name: 'Lions', contactEmail: 'nope' })).toEqual({ error: 'Enter a valid email or leave it blank.' });
+    const other = await makeOrg('other');
+    await signInAs((await addMember(other.id, 'owner', 'x@example.test')).id, { mfa: true });
+    await editTeam('other', { teamId, name: 'Stolen', contactEmail: '' }).catch(() => {});
+    expect((await db.team.findUniqueOrThrow({ where: { id: teamId } })).name).toBe('Lions');
   });
 
   it('saves rules and refuses an out-of-range value', async () => {

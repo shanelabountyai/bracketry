@@ -62,6 +62,8 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **SEASON-04** A blackout is (team, day, optional reason). A commissioner can bulk-enter a holiday for every team.
 - **SEASON-05** Rules per season: maximum games per team per day, minimum rest days, maximum gap, minimum days between rematches, and the five soft weights. Defaults come from `DEFAULT_RULES`.
 - **SEASON-06** All divisions in a season share one slot inventory and are scheduled together.
+- **SEASON-07** (L-030) A commissioner can change a team's name and contact email. A blank email clears it; a name already used in the season is refused. Nothing else about a team changes, and no game moves.
+- **SEASON-08** (L-030) On the season page's team list a team with no contact email says so, with what it costs: no notice when its games move. This is shown to every member; the email itself is shown only in the commissioner's edit form.
 
 ### GEN — generation
 

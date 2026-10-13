@@ -1,3 +1,13 @@
+## L-030: edit a team, flag a missing contact email (2026-10-13)
+
+**Built.** Written first as SEASON-07 and SEASON-08 in `00-master-prd.md`. `editTeam` in `seasons/actions.ts` changes a team's name and contact email after a scoped lookup and maps the unique violation to the same message `addTeam` uses; a blank email clears it. Each team on the season page has an "Edit" disclosure with the two fields prefilled (commissioners only), and a team with no contact email says so beside its name, with what it costs: no notice when its games move. One integration test in `tests/integration/season-setup.test.ts`: rename, set and clear the email, a taken name and a bad email refused, another org's owner changes nothing.
+
+**Decided.** Nothing new. Readings taken: a rename is allowed at any season status, since games, results and bracket rows point at the team id and every screen reads the name on read; the division cannot be changed here (that would move games); the flag is shown to every member but the email only inside the commissioner's form; the edit is not written to the audit log, the same as `addTeam`.
+
+**Measured.** Gate: lint 0 errors (1 warning, the template's), typecheck clean, 421 tests in 56 files (1 new), `foundation:drift` clean against v1.2.1. `e2e/golden-path.spec.ts`: 1 passed.
+
+**Left behind.** No browser test opens the edit form or asserts the flag; the markup was not looked at in a browser. A rename after publish sends no notice and is not in the audit log. Notices already queued in the outbox keep the old name and address. A team still cannot be deleted or moved to another division (L-036 covers withdrawal).
+
 ## L-029: no plain Generate once a game has a score (2026-10-13)
 
 **Built.** Written first as GEN-08 in `00-master-prd.md`. `generate` now counts the season's `GameResult` rows after the scoped lookup and refuses when there is one, before feasibility and before anything is stored. The Generate section of the season page drops the "Generate draft" and "New seed" forms once a result exists and shows a sentence pointing to "Regenerate the rest" under the rainout tool; the feasibility line and the latest report stay. One integration test in `tests/integration/rainout.test.ts`: score one game, a plain run is refused and the season still has one version.

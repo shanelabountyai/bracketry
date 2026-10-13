@@ -1,8 +1,8 @@
 # NEXT
 
-The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; L-023 to L-026 are done, and L-027 to L-029 from the P2 persona review. Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
+The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; L-023 to L-026 are done, and L-027 to L-030 from the P2 persona review. Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
 
-PICK UP HERE: L-030, edit a team and flag a missing contact email at setup (S; Sonnet): the fourth row of the P2 section in `docs/prds/06-backlog.md`. L-027 to L-029 are done (SCORE-04 to SCORE-12, GEN-08, D-44). The P2 rows have no story IDs, so write the acceptance criteria into `00-master-prd.md` first, as L-027 to L-029 did. L-031, L-033, L-036 and L-039 each need a decision before code; L-040 and L-041 are blocked outside this repo.
+PICK UP HERE: L-031, a confirm line before a score is saved and a way to void a season game's score as a superseding row (M; Opus): the fifth row of the P2 section in `docs/prds/06-backlog.md`. It needs one decision from the owner before any code: what a voided game shows (on the score list, in standings and on the public page). Ask it as a question first, record it as D-45, then write the acceptance criteria into `00-master-prd.md`, as L-027 to L-030 did. L-027 to L-030 are done (SCORE-04 to SCORE-12, GEN-08, SEASON-07, SEASON-08, D-44). L-033, L-036 and L-039 each need a decision before code too; L-040 and L-041 are blocked outside this repo. If the owner would rather not decide yet, L-032 and L-035 (both Sonnet) need none.
 
 Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The three LinkedIn drafts (Ledger 114, 115 and 116) were drafted without a review pass by the owner. The Ledger's project list has no `bracketry` entry. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
@@ -27,3 +27,5 @@ Open from L-027: D-44 was taken as defaults (the server, not the browser, refuse
 Open from L-028: no browser test asserts the results order, the field headings, the unscored count or the missing form on a future game; the markup was not looked at in a browser.
 
 Open from L-029: no browser test asserts the missing Generate buttons or the sentence that replaces them; the markup was not looked at in a browser.
+
+Open from L-030: no browser test opens the team edit form or asserts the missing-email flag; the markup was not looked at in a browser. A rename is not audited and sends no notice; notices already in the outbox keep the old name and address. A team cannot be deleted or moved to another division.

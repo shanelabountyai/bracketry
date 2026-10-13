@@ -40,7 +40,7 @@ The unexplained one is smaller and still open: the first full `npm test` after t
 
 ## What is open
 
-P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) and L-024 (a calendar feed per team) were built after closure; L-026 (crossover games between divisions, counted in each team's own standings) followed; L-025 (the LLM benchmark) ran once; its table is in the per-item notes. A review from the three personas' chairs on 2026-10-12 added fifteen unbuilt rows (L-027 to L-041) to the backlog; the largest is that a team cannot be edited or withdrawn after it is added. Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
+P1: L-023 (what-if standings, clinched and eliminated on points by enumeration up to 12 open games) and L-024 (a calendar feed per team) were built after closure; L-026 (crossover games between divisions, counted in each team's own standings) followed; L-025 (the LLM benchmark) ran once; its table is in the per-item notes. A review from the three personas' chairs on 2026-10-12 added fifteen unbuilt rows (L-027 to L-041) to the backlog; the largest is that a team cannot be withdrawn after it is added (its name and contact email can be edited since L-030). Known gaps, all in `NEXT.md`: plain `generate` ignores played games; `publish` does not look at playoff games; public reads share the template's per-IP limit; the seed was only tried on a Monday; a playoff game cannot be scored live in the demo.
 
 ## Per-item notes
 
@@ -89,3 +89,5 @@ What was expected was not what was measured. Every one of the nine answers was a
 **L-028, results for tonight.** The same review found the score list in no useful order for someone standing at a field with a clipboard. It now opens with the games already played that still have no score, grouped by field, with a count of how many are left; a game that has not been played yet no longer offers a score form.
 
 **L-029, no plain Generate after a score.** A plain run builds the whole season from nothing and knows nothing of games already played; until now it could be run mid-season and only the publish step caught the result. Once any game has a score the buttons are gone and the action refuses, and the page points to "Regenerate the rest", which keeps played games where they were played.
+
+**L-030, edit a team.** A team's name and contact email could be typed once and never changed, and a missing email was only learned as a count on the publish notice, after the teams that needed telling had already been skipped. A commissioner can now change both, and the team list says at setup which teams have no email and that they will get no notice when their games move.

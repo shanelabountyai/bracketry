@@ -14,7 +14,7 @@ import { loadRainout, timeIn } from '../rainout-load';
 import { recordResult } from '../result-actions';
 import { resultsOrder } from '../results-order';
 import { publish, removePin, setPin } from '../version-actions';
-import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setCrossover, setSlotOpen } from '../actions';
+import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, editTeam, saveRules, setCrossover, setSlotOpen } from '../actions';
 
 export const metadata = { title: 'Season setup' };
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -118,7 +118,26 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
       {divisions.map((d) => (
         <section key={d.id}>
           <h3>{d.name} ({d.legs === 2 ? 'double' : 'single'} round robin)</h3>
-          <ul>{teams.filter((t) => t.divisionId === d.id).map((t) => <li key={t.id}>{t.name}</li>)}</ul>
+          <ul>
+            {teams.filter((t) => t.divisionId === d.id).map((t) => (
+              <li key={t.id}>
+                {t.name}
+                {/* SEASON-08: said here, at setup, so it is not first learned from the count at publish. */}
+                {!t.contactEmail && <> · <strong>no contact email</strong> (gets no notice when its games move)</>}
+                {edit && (
+                  <details>
+                    <summary>Edit</summary>
+                    <ActionForm action={bind(editTeam)}>
+                      <input type="hidden" name="teamId" value={t.id} />
+                      <label>Team <input name="name" required maxLength={120} defaultValue={t.name} /></label>
+                      <label>Contact email (internal) <input name="contactEmail" type="email" defaultValue={t.contactEmail ?? ''} /></label>
+                      <button type="submit">Save team</button>
+                    </ActionForm>
+                  </details>
+                )}
+              </li>
+            ))}
+          </ul>
           {edit && (
             <ActionForm action={bind(addTeam)}>
               <input type="hidden" name="divisionId" value={d.id} />

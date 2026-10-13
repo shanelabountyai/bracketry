@@ -86,9 +86,11 @@ export const addDivision = orgAction(
   },
 );
 
+const contactEmail = z.union([z.literal(''), z.email('Enter a valid email or leave it blank.')]).default('');
+
 export const addTeam = orgAction(
   PERM,
-  z.object({ divisionId: ref('division'), name: name('team'), contactEmail: z.union([z.literal(''), z.email('Enter a valid email or leave it blank.')]).default('') }),
+  z.object({ divisionId: ref('division'), name: name('team'), contactEmail }),
   async (ctx, i) => {
     const d = await mine(db.division.findFirst({ where: { id: i.divisionId, ...inOrg(ctx) }, select: { id: true, seasonId: true } }));
     await write(
@@ -96,6 +98,20 @@ export const addTeam = orgAction(
       'A team with that name already exists in this season.',
     );
     revalidatePath(seasonPage(ctx, d.seasonId));
+  },
+);
+
+/** SEASON-07: the name and the contact email, nothing else. A blank email clears it. Games point at the team id, so a rename moves nothing. */
+export const editTeam = orgAction(
+  PERM,
+  z.object({ teamId: ref('team'), name: name('team'), contactEmail }),
+  async (ctx, i) => {
+    const t = await mine(db.team.findFirst({ where: { id: i.teamId, ...inOrg(ctx) }, select: { id: true, seasonId: true } }));
+    await write(
+      () => db.team.update({ where: { id: t.id }, data: { name: i.name, contactEmail: i.contactEmail || null } }),
+      'A team with that name already exists in this season.',
+    );
+    revalidatePath(seasonPage(ctx, t.seasonId));
   },
 );
 
