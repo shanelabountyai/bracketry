@@ -64,6 +64,8 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **SEASON-06** All divisions in a season share one slot inventory and are scheduled together.
 - **SEASON-07** (L-030) A commissioner can change a team's name and contact email. A blank email clears it; a name already used in the season is refused. Nothing else about a team changes, and no game moves.
 - **SEASON-08** (L-030) On the season page's team list a team with no contact email says so, with what it costs: no notice when its games move. This is shown to every member; the email itself is shown only in the commissioner's edit form.
+- **SEASON-09** (L-038) A commissioner can start a season as a copy of another one in the same organization: a new name, first day and last day are typed; the timezone, game length, rules, standings settings and crossover rounds are taken from the source; every division (name, single or double) and every team (name, contact email) is created again; every weekly slot pattern is created again and materialized across the new window. Fields belong to the organization (SEASON-03) and are not duplicated. The copy starts in `setup` with no games, pins, versions or results.
+- **SEASON-10** (L-038) Nothing dated is copied: blackouts, slots closed or added by hand, and makeup slots stay with the source. The source season is not changed. A backwards window or a day that is not a real day is refused; another organization's season is not found. The copy is one transaction and one audit row naming the source.
 
 ### GEN — generation
 

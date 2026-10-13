@@ -3,7 +3,7 @@ import { db } from '@/core/db';
 import { NavSignal } from '../helpers/next';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
-import { addBlackout, addDivision, addField, addHoliday, addSeason, addSlot, addSlotPattern, addTeam, editTeam, saveRules, setSlotOpen } from '@/app/o/[org]/seasons/actions';
+import { addBlackout, addDivision, addField, addHoliday, addSeason, addSlot, addSlotPattern, addTeam, copySeason, editTeam, saveRules, setSlotOpen } from '@/app/o/[org]/seasons/actions';
 
 // L-012: season setup through the real actions. Window 2026-10-05 (Mon) to 2026-10-18 (Sun): two Tuesdays.
 const SLUG = 'league';
@@ -76,6 +76,42 @@ describe('season setup', () => {
     await signInAs((await addMember(other.id, 'owner', 'x@example.test')).id, { mfa: true });
     await editTeam('other', { teamId, name: 'Stolen', contactEmail: '' }).catch(() => {});
     expect((await db.team.findUniqueOrThrow({ where: { id: teamId } })).name).toBe('Lions');
+  });
+
+  it('copies settings, divisions, teams and weekly patterns into a new window, and nothing dated (SEASON-09, SEASON-10)', async () => {
+    await addField(SLUG, { seasonId, name: 'Field 1' });
+    const fieldId = (await db.field.findFirstOrThrow()).id;
+    await addSlotPattern(SLUG, { seasonId, fieldId, weekday: 2, start: '18:00' });
+    await addSlot(SLUG, { seasonId, fieldId, day: '2026-10-07', start: '19:00' });
+    await addDivision(SLUG, { seasonId, name: 'Open', legs: '2' });
+    const divisionId = (await db.division.findFirstOrThrow()).id;
+    await addTeam(SLUG, { divisionId, name: 'Tigers', contactEmail: 'coach@example.test' });
+    await addTeam(SLUG, { divisionId, name: 'Cubs', contactEmail: '' });
+    await addHoliday(SLUG, { seasonId, day: '2026-10-12', reason: '' });
+    await saveRules(SLUG, { seasonId, maxGamesPerTeamPerDay: 2, minRestDays: 1, maxGapDays: 10, minRematchDays: 7, rest: 5, longGap: 4, slotEquity: 3, fieldEquity: 2, rematch: 1 });
+    const before = { slots: await slots(), blackouts: await db.blackout.count() };
+
+    expect(await copySeason(SLUG, { fromId: seasonId, name: 'Spring', firstDay: '2027-04-18', lastDay: '2027-04-05' })).toEqual({ error: 'The last day cannot be before the first day.' });
+    expect(await copySeason(SLUG, { fromId: seasonId, name: 'Spring', firstDay: '2027-02-30', lastDay: '2027-04-05' })).toEqual({ error: 'Enter a real day as YYYY-MM-DD.' });
+    expect(await db.season.count()).toBe(1);
+
+    // 2027-04-05 is a Monday, 26 weeks after 2026-10-05: its two Tuesdays are the 6th and the 13th.
+    const to = await copySeason(SLUG, { fromId: seasonId, name: 'Spring', firstDay: '2027-04-05', lastDay: '2027-04-18' }).catch((e: NavSignal) => e);
+    const copyId = (to as NavSignal).to!.split('/').pop()!;
+    const source = await db.season.findUniqueOrThrow({ where: { id: seasonId } });
+    expect(await db.season.findUniqueOrThrow({ where: { id: copyId } })).toMatchObject({ name: 'Spring', status: 'setup', timezone: 'America/Chicago', gameMinutes: 60, rules: source.rules, standingsConfig: source.standingsConfig });
+    expect(await db.division.findMany({ where: { seasonId: copyId }, select: { name: true, legs: true } })).toEqual([{ name: 'Open', legs: 2 }]);
+    expect(await db.team.findMany({ where: { seasonId: copyId }, select: { name: true, contactEmail: true }, orderBy: { name: 'asc' } })).toEqual([{ name: 'Cubs', contactEmail: null }, { name: 'Tigers', contactEmail: 'coach@example.test' }]);
+    expect(await db.slotPattern.findMany({ where: { seasonId: copyId }, select: { weekday: true, start: true, fieldId: true } })).toEqual([{ weekday: 2, start: '18:00', fieldId }]);
+    expect((await db.fieldSlot.findMany({ where: { seasonId: copyId }, orderBy: { day: 'asc' } })).map((s) => `${s.day} ${s.start} ${s.status}`)).toEqual(['2027-04-06 18:00 open', '2027-04-13 18:00 open']);
+    expect(await db.field.count()).toBe(1);
+    expect(await db.blackout.count()).toBe(before.blackouts);
+    expect(await db.fieldSlot.findMany({ where: { seasonId }, orderBy: [{ day: 'asc' }, { start: 'asc' }] })).toEqual(before.slots);
+
+    const other = await makeOrg('other');
+    await signInAs((await addMember(other.id, 'owner', 'x@example.test')).id, { mfa: true });
+    await copySeason('other', { fromId: seasonId, name: 'Stolen', firstDay: '2027-04-05', lastDay: '2027-04-18' }).catch(() => {});
+    expect(await db.season.count()).toBe(2);
   });
 
   it('saves rules and refuses an out-of-range value', async () => {

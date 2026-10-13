@@ -60,6 +60,38 @@ export const addSeason = orgAction(
   },
 );
 
+/** SEASON-09, SEASON-10: a new season with the source's settings, divisions, teams and weekly patterns. Nothing dated comes along (D-49). */
+export const copySeason = orgAction(
+  PERM,
+  z.object({ fromId: ref('season'), name: name('season'), firstDay: day, lastDay: day }),
+  async (ctx, i) => {
+    const from = await mine(db.season.findFirst({ where: { id: i.fromId, ...inOrg(ctx) }, include: { divisions: { include: { teams: true } }, slotPatterns: true } }));
+    validDay(i.firstDay);
+    validDay(i.lastDay);
+    if (i.lastDay < i.firstDay) throw new Refused('The last day cannot be before the first day.');
+    const s = await db.$transaction(async (tx) => {
+      const s = await tx.season.create({
+        data: {
+          ...inOrg(ctx), name: i.name, firstDay: i.firstDay, lastDay: i.lastDay,
+          timezone: from.timezone, gameMinutes: from.gameMinutes, crossoverRounds: from.crossoverRounds,
+          rules: from.rules as object, standingsConfig: from.standingsConfig as object,
+        },
+      });
+      const own = { ...inOrg(ctx), seasonId: s.id };
+      for (const d of from.divisions) {
+        const made = await tx.division.create({ data: { ...own, name: d.name, legs: d.legs } });
+        await tx.team.createMany({ data: d.teams.map((t) => ({ ...own, divisionId: made.id, name: t.name, contactEmail: t.contactEmail })) });
+      }
+      const patterns = from.slotPatterns.map(({ weekday, start, fieldId }) => ({ weekday, start, fieldId }));
+      await tx.slotPattern.createMany({ data: patterns.map((p) => ({ ...own, ...p })) });
+      await tx.fieldSlot.createMany({ data: materializeSlots(patterns, i.firstDay, i.lastDay).map((r) => ({ ...own, ...r })) });
+      await audit(ctx, 'season.copied', { targetType: 'season', targetId: s.id, data: { from: from.id } }, tx);
+      return s;
+    });
+    redirect(seasonPage(ctx, s.id));
+  },
+);
+
 export const addField = orgAction(PERM, z.object({ seasonId: ref('season'), name: name('field') }), async (ctx, i) => {
   const s = await mine(db.season.findFirst({ where: { id: i.seasonId, ...inOrg(ctx) }, select: { id: true } }));
   await write(() => db.field.create({ data: { ...inOrg(ctx), name: i.name } }), 'A field with that name already exists.');

@@ -75,7 +75,7 @@ From three read-only reviews in the chairs of the PRD's personas (commissioner, 
 | 36 | ✅ L-035 | Public fairness table: each team's count of games per start time and per field, from `scheduleQuality` and nothing else (D-4) | Coach / parent | S | Sonnet | L-020 |
 | 37 | ⬜ L-036 | A team withdraws mid-season: its remaining games are forfeited or removed and the rest rescheduled around it, with played results kept. Needs a spec section and a decision before any code | Commissioner | L | Opus | L-031, L-017 |
 | 38 | ✅ L-037 | Editor for points, the run-difference cap and forfeit settings (STAND-02; open from L-016) | Commissioner | M | Opus | L-016 |
-| 39 | ⬜ L-038 | Copy a season's divisions, teams and fields into a new season | Commissioner | S | Sonnet | L-012 |
+| 39 | ✅ L-038 | Copy a season's divisions, teams and fields into a new season | Commissioner | S | Sonnet | L-012 |
 | 40 | ⬜ L-039 | A private preview before a season is public. Reopens D-33: the owner decides first | Commissioner | M | Opus | L-019 |
 | 41 | ⬜ L-040 | Scorekeeper role: enter and correct scores and nothing else. Blocked: needs a permission added in `saas-foundation` (D-30), not here | Scorekeeper, commissioner | M | Opus | template release |
 | 42 | ⬜ L-041 | Notices leave the outbox: one confirmed send with a mail key. Blocked while the project is not deployed (D-36) | Commissioner | S | Sonnet | deployment |
