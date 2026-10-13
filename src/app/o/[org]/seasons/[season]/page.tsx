@@ -12,6 +12,7 @@ import { generate } from '../generate-actions';
 import { closeDay, proposeReschedule, regenerateRest } from '../rainout-actions';
 import { loadRainout, timeIn } from '../rainout-load';
 import { recordResult } from '../result-actions';
+import { resultsOrder } from '../results-order';
 import { publish, removePin, setPin } from '../version-actions';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setCrossover, setSlotOpen } from '../actions';
 
@@ -66,6 +67,46 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   const rules = { ...DEFAULT_RULES, ...(season.rules as Partial<Rules>) };
   const sid = <input type="hidden" name="seasonId" value={season.id} />;
   const crossovers = input.games.filter((g) => g.awayDivision).length;
+  // Results for tonight (SCORE-10 to SCORE-12): unscored played games first by field, no form on a future game.
+  const { owed, rest } = resultsOrder(
+    scored.flatMap((pl) => {
+      const [g, slot] = [games.find((x) => x.id === pl.gameId), slots.find((x) => x.id === pl.fieldSlotId)];
+      const history = results.filter((r) => r.gameId === pl.gameId);
+      return g && slot ? [{ g, history, day: slot.day, start: slot.start, field: fieldName(slot.fieldId), scored: history.length > 0 }] : [];
+    }),
+    rain.today,
+  );
+  const owedCount = owed.reduce((n, [, rows]) => n + rows.length, 0);
+  const resultItem = ({ g, history, day, start, field }: (typeof rest)[number]) => {
+    const last = history[history.length - 1];
+    const [home, away] = [teamName(g.homeTeamId), teamName(g.awayTeamId)];
+    const show = (r: (typeof results)[number]) => (r.forfeit ? `${r.forfeit === 'home' ? home : away} forfeited` : `${r.homeRuns}–${r.awayRuns}${r.homeRuns === r.awayRuns ? ' (Tie)' : ''}`);
+    return (
+      <li key={g.id}>
+        {home} v {away} · {day} {start} · {field} ·{' '}
+        {last ? show(last) : 'no score'}
+        {history.length > 1 && (
+          <ol>
+            {history.map((r) => (
+              <li key={r.id}>{show(r)} · {author(r.enteredBy)} · {timeIn(season.timezone, r.enteredAt)}{r.reason ? ` · ${r.reason}` : ''}</li>
+            ))}
+          </ol>
+        )}
+        {edit && day <= rain.today && (
+          <ActionForm action={bind(recordResult)}>
+            <input type="hidden" name="gameId" value={g.id} />
+            {/* No `required` on the run boxes: a forfeit leaves them empty. The action refuses an empty box otherwise (SCORE-04). */}
+            <label>{home} <input name="homeRuns" type="number" min={0} max={99} /></label>
+            <label>{away} <input name="awayRuns" type="number" min={0} max={99} /></label>
+            <label>Forfeit by <select name="forfeit" defaultValue=""><option value="">none</option><option value="home">{home}</option><option value="away">{away}</option></select></label>
+            {last && <label><input name="correction" type="checkbox" defaultChecked /> This corrects the score above</label>}
+            {last && <label>Reason for the correction <input name="reason" required maxLength={500} /></label>}
+            <button type="submit">{last ? 'Save correction' : 'Save score'}</button>
+          </ActionForm>
+        )}
+      </li>
+    );
+  };
 
   return (
     <main>
@@ -265,41 +306,15 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
 
       <h2>Results</h2>
       {!published && <p>Scores are entered against the published version. Publish one first.</p>}
-      <ul>
-        {scored.map((pl) => {
-          const g = games.find((x) => x.id === pl.gameId);
-          const history = results.filter((r) => r.gameId === pl.gameId);
-          const last = history[history.length - 1];
-          if (!g) return null;
-          const [home, away] = [teamName(g.homeTeamId), teamName(g.awayTeamId)];
-          const show = (r: (typeof results)[number]) => (r.forfeit ? `${r.forfeit === 'home' ? home : away} forfeited` : `${r.homeRuns}–${r.awayRuns}${r.homeRuns === r.awayRuns ? ' (Tie)' : ''}`);
-          return (
-            <li key={pl.gameId}>
-              {gameLabel(g.key)} · {slotLabel(pl.fieldSlotId)} ·{' '}
-              {last ? show(last) : 'no score'}
-              {history.length > 1 && (
-                <ol>
-                  {history.map((r) => (
-                    <li key={r.id}>{show(r)} · {author(r.enteredBy)} · {timeIn(season.timezone, r.enteredAt)}{r.reason ? ` · ${r.reason}` : ''}</li>
-                  ))}
-                </ol>
-              )}
-              {edit && (
-                <ActionForm action={bind(recordResult)}>
-                  <input type="hidden" name="gameId" value={g.id} />
-                  {/* No `required` on the run boxes: a forfeit leaves them empty. The action refuses an empty box otherwise (SCORE-04). */}
-                  <label>{home} <input name="homeRuns" type="number" min={0} max={99} /></label>
-                  <label>{away} <input name="awayRuns" type="number" min={0} max={99} /></label>
-                  <label>Forfeit by <select name="forfeit" defaultValue=""><option value="">none</option><option value="home">{home}</option><option value="away">{away}</option></select></label>
-                  {last && <label><input name="correction" type="checkbox" defaultChecked /> This corrects the score above</label>}
-                  {last && <label>Reason for the correction <input name="reason" required maxLength={500} /></label>}
-                  <button type="submit">{last ? 'Save correction' : 'Save score'}</button>
-                </ActionForm>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {published && <p>{owedCount === 0 ? 'Every game played so far has a score.' : `${owedCount} played ${owedCount === 1 ? 'game has' : 'games have'} no score yet.`}</p>}
+      {owed.map(([field, rows]) => (
+        <section key={field}>
+          <h3>{field}</h3>
+          <ul>{rows.map(resultItem)}</ul>
+        </section>
+      ))}
+      {owed.length > 0 && rest.length > 0 && <h3>Scored and upcoming</h3>}
+      <ul>{rest.map(resultItem)}</ul>
 
       <h2>Rainout</h2>
       <p>Close the slots that were lost, add makeup slots if you have them, then propose a reschedule. Only games in a closed slot move; a game with a score is never moved. Free slots on or before {rain.today} are not offered. Teams are notified when the new version is published.</p>

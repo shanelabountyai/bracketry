@@ -1,3 +1,15 @@
+## L-028: results for tonight (2026-10-13)
+
+**Built.** Written first as SCORE-10 to SCORE-12 in `00-master-prd.md`. The Results section of the season page now opens with a count of played games that have no score, then those games under a heading for each field in date and time order, then every other game in date order under "Scored and upcoming". A game after today (season timezone, the same `today` the rainout tool uses) has no score form; `recordResult` still refuses it. The ordering is one function, `resultsOrder` in `src/app/o/[org]/seasons/results-order.ts`, with `tests/unit/results-order.test.ts` (3 tests). No action, schema or engine change.
+
+**Decided.** Nothing new. The row was specific enough; the only reading taken was that a scored game on or before today keeps its form, because that is where a correction is entered.
+
+**Measured.** Gate: lint 0 errors (1 warning, the template's), typecheck clean, 419 tests in 56 files (3 new, in 1 new file), `foundation:drift` clean against v1.2.1. `e2e/golden-path.spec.ts`: 1 passed.
+
+**Left behind.** No browser test asserts the new order, the field headings, the count or the missing form: the golden path loads the page and passes, but the markup was not looked at in a browser. Fields are ordered by name with plain string comparison. The list was unordered before (the query had no `orderBy`); it is now in date order, which nothing depended on.
+
+---
+
 ## L-027: score entry fixes (2026-10-13)
 
 **Built.** Six fixes from the scorekeeper persona review, written first as SCORE-04 to SCORE-09 in `00-master-prd.md`. `recordResult` and `recordBracketResult` read an empty run box as "not entered" and refuse it unless a forfeit is chosen; before, `z.coerce.number` read `''` as 0 and an untouched form saved 0-0. The season form's run boxes start empty and are labelled with the two team names, as is the forfeit choice, the result line and the history. With a score present the form opens with "correction" ticked and only then shows the reason field. A level score is followed by "(Tie)". History times go through a new `timeIn(tz, at)` beside `dayIn`, in the season's timezone. A playoff correction is refused without a reason and the reason is stored in the audit row.

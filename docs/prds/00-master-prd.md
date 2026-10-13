@@ -99,6 +99,9 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **SCORE-07** (L-027) A saved tie reads as a tie: the score is followed by "(Tie)".
 - **SCORE-08** (L-027) A time in the result history is in the season's timezone, not UTC.
 - **SCORE-09** (L-027) Correcting a playoff score requires a reason, as a season correction does. The bracket row is still overwritten (D-32), so the reason is kept in the audit row.
+- **SCORE-10** (L-028) The results list opens with the games on or before today (season timezone) that have no score, under a heading for each field, in date and time order. Every other game follows in date order.
+- **SCORE-11** (L-028) A game after today shows no score form. The action still refuses it (SCORE-01).
+- **SCORE-12** (L-028) Above the list is the number of played games still without a score.
 
 ### STAND — standings
 

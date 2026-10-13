@@ -65,7 +65,7 @@ From three read-only reviews in the chairs of the PRD's personas (commissioner, 
 | # | ID | Item | Persona | Size | Model | Depends on |
 |---|---|---|---|---|---|---|
 | 28 | ✅ L-027 | Score entry fixes: run boxes empty and required (an untouched form saves 0-0 today); "correction" ticked and the reason shown when a score exists; team names in place of "home/away" on the run boxes and the forfeit choice; "Tie" echoed on a saved tie; history times in league time, not UTC; a bracket correction asks for a reason like a season one | Scorekeeper | S | Sonnet | L-015 |
-| 29 | ⬜ L-028 | Results for tonight: games on or before today with no score first, grouped by field; no form on a future game; a count of played games still unscored | Scorekeeper | S | Sonnet | L-027 |
+| 29 | ✅ L-028 | Results for tonight: games on or before today with no score first, grouped by field; no form on a future game; a count of played games still unscored | Scorekeeper | S | Sonnet | L-027 |
 | 30 | ⬜ L-029 | Plain Generate is not offered once any game has a score; only "Regenerate the rest" (closes the open note from L-017) | Commissioner | S | Sonnet | L-017 |
 | 31 | ⬜ L-030 | Edit a team: name and contact email; a team with no contact email is flagged on the teams list at setup, not only counted at publish | Commissioner | S | Sonnet | L-012 |
 | 32 | ⬜ L-031 | A score entered on the wrong game: a confirm line before saving, and a way to void a season game's score as a new superseding row, never a delete (D-13). Needs a decision on what a voided game shows | Scorekeeper | M | Opus | L-027 |
