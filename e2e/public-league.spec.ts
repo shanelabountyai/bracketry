@@ -80,6 +80,20 @@ test('on a phone: a team link opens on its next game, days read as words, nothin
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
+test('a closed slot shows its unscored game as postponed, with no new version (PUB-12, ICAL-03)', async ({ page }) => {
+  const { slug, season } = await seedLeague('published');
+  await db.query(`UPDATE "FieldSlot" SET status = 'closed' WHERE "seasonId" = $1`, [season]);
+  await page.goto(`/l/${slug}/${season}?team=Otters`);
+  await expect(page.getByRole('heading', { name: 'Postponed' })).toBeVisible();
+  await expect(page.getByText(/Otters v Herons: was \w{3} Jun 6 19:00 · North Diamond/)).toBeVisible();
+  await expect(page.getByText('19:00 · North Diamond · Otters v Herons (Open) · postponed')).toBeVisible();
+  await expect(page.getByText('Next game: none left on the schedule.')).toBeVisible();
+  await expect(page.getByText('18:00 · North Diamond · Herons v Otters (Open) · 7-4', { exact: true })).toBeVisible(); // played before the slot closed
+  const ics = await (await page.request.get(`/l/${slug}/${season}/calendar.ics?team=Otters`)).text();
+  expect(ics).toContain('SUMMARY:Postponed: Otters v Herons\r\n');
+  expect(ics).toContain('SUMMARY:Herons v Otters\r\n');
+});
+
 test('a season with only a draft, an unknown season and a malformed id are all the same 404', async ({ request }) => {
   const { slug, season } = await seedLeague('draft');
   for (const path of [`/l/${slug}/${season}`, `/l/${slug}/${season}/calendar.ics?team=Herons`, `/l/${slug}/${randomUUID()}`, `/l/${slug}/not-a-uuid`, `/l/nobody/${season}`]) {

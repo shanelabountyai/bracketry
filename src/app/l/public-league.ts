@@ -27,10 +27,14 @@ export interface PublicGame {
   forfeit: 'home' | 'away' | null;
   /** The slot this game held in the version before, while the mark is shown (PUB-02). */
   movedFrom: string | null;
+  /** Its slot is closed and it has no score: a new time has not been published yet (PUB-12, D-51). */
+  postponed: boolean;
 }
-export const blankPublicGame = (): PublicGame => ({ uid: '', day: '', start: '', field: '', division: '', home: '', away: '', homeRuns: null, awayRuns: null, forfeit: null, movedFrom: null });
+export const blankPublicGame = (): PublicGame => ({ uid: '', day: '', start: '', field: '', division: '', home: '', away: '', homeRuns: null, awayRuns: null, forfeit: null, movedFrom: null, postponed: false });
 
-interface SlotRow { day: string; start: string; field: { name: string } }
+interface SlotRow { day: string; start: string; field: { name: string }; status?: string }
+/** The rainout tool's "displaced" (rainout-load.ts), as a yes or no: the slot's status itself is never projected (D-51). */
+const isPostponed = (s: SlotRow | null, scored: boolean) => s?.status === 'closed' && !scored;
 interface PlacementRow {
   gameId: string;
   fieldSlot: SlotRow;
@@ -54,6 +58,7 @@ export function toPublicGame(p: PlacementRow, was: SlotRow | null): PublicGame {
     awayRuns: r?.awayRuns ?? null,
     forfeit: r?.forfeit ?? null,
     movedFrom: was && slotLabel(was),
+    postponed: isPostponed(p.fieldSlot, !!r),
   };
 }
 
@@ -90,8 +95,10 @@ export interface PublicMatch {
   bRuns: number | null;
   forfeit: 'a' | 'b' | null;
   winner: string | null;
+  /** As a season game's (PUB-12). */
+  postponed: boolean;
 }
-export const blankPublicMatch = (): PublicMatch => ({ id: '', label: '', round: 0, a: '', b: '', slot: null, aRuns: null, bRuns: null, forfeit: null, winner: null });
+export const blankPublicMatch = (): PublicMatch => ({ id: '', label: '', round: 0, a: '', b: '', slot: null, aRuns: null, bRuns: null, forfeit: null, winner: null, postponed: false });
 
 /** PUB-09: a playoff game's name, counted from the last round. `rounds` is how many the bracket has. */
 export function roundName(round: number, index: number, rounds: number): string {
@@ -101,7 +108,7 @@ export function roundName(round: number, index: number, rounds: number): string 
 
 export function toPublicMatch(m: BracketMatch, slot: SlotRow | null, name: (teamId: string) => string, label: (matchId: string) => string = (id) => id): PublicMatch {
   const show = (x: BracketSlot) => (x.kind === 'team' ? `(${x.seed}) ${name(x.team)}` : x.kind === 'bye' ? 'bye' : `winner of ${label(x.matchId)}`);
-  return { ...blankPublicMatch(), id: m.id, label: label(m.id), round: m.round, a: show(m.a), b: show(m.b), slot: slot && slotLabel(slot), aRuns: m.result?.aRuns ?? null, bRuns: m.result?.bRuns ?? null, forfeit: m.result?.forfeit ?? null, winner: m.winner ? name(m.winner) : null };
+  return { ...blankPublicMatch(), id: m.id, label: label(m.id), round: m.round, a: show(m.a), b: show(m.b), slot: slot && slotLabel(slot), aRuns: m.result?.aRuns ?? null, bRuns: m.result?.bRuns ?? null, forfeit: m.result?.forfeit ?? null, winner: m.winner ? name(m.winner) : null, postponed: isPostponed(slot, !!m.result) };
 }
 
 export interface PublicFairness {
@@ -152,7 +159,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
   const prev = marked
     ? await db.scheduleVersion.findFirst({ where: { seasonId, status: 'superseded', publishedAt: { not: null }, ...org }, orderBy: { publishedAt: 'desc' }, select: { id: true } })
     : null;
-  const slot = { select: { day: true, start: true, field: { select: { name: true } } } };
+  const slot = { select: { day: true, start: true, status: true, field: { select: { name: true } } } };
   const named = { select: { name: true } };
   const side = { select: { name: true, divisionId: true } };
   const [rows, s, q] = await Promise.all([
@@ -186,7 +193,7 @@ export async function loadPublicLeague(orgSlug: string, seasonId: string): Promi
     (b ? b.row.games : []).flatMap((g) => {
       if (!g.fieldSlot || !g.aTeamId || !g.bTeamId) return [];
       const [home, away] = [g.aTeamId, g.bTeamId].sort((x, y) => b!.seeds.indexOf(x) - b!.seeds.indexOf(y)).map((id) => ({ name: name(id), divisionId: division.id }));
-      return [toPublicGame({ gameId: g.id, fieldSlot: g.fieldSlot, game: { division: { name: `${division.name} · ${roundName(g.round, g.index, b!.bracket.rounds.length)}` }, homeTeam: home!, awayTeam: away!, results: [] } }, null)];
+      return [{ ...toPublicGame({ gameId: g.id, fieldSlot: g.fieldSlot, game: { division: { name: `${division.name} · ${roundName(g.round, g.index, b!.bracket.rounds.length)}` }, homeTeam: home!, awayTeam: away!, results: [] } }, null), postponed: isPostponed(g.fieldSlot, g.aRuns !== null) }];
     }),
   );
   return {
@@ -239,7 +246,8 @@ export function teamCalendar(league: PublicLeague, team: string): string | null 
       // ponytail: TZID with no VTIMEZONE block; Google, Apple and Outlook resolve IANA names. Add the block if a client shows UTC.
       `DTSTART;TZID=${league.timezone}:${g.day.replaceAll('-', '')}T${g.start.replace(':', '')}00`,
       `DURATION:PT${league.gameMinutes}M`,
-      `SUMMARY:${icsText(`${g.home} v ${g.away}`)}`,
+      // ICAL-03: said in the title, which every client shows; STATUS:CANCELLED would make some drop the event.
+      `SUMMARY:${icsText(`${g.postponed ? 'Postponed: ' : ''}${g.home} v ${g.away}`)}`,
       `LOCATION:${icsText(g.field)}`,
       `DESCRIPTION:${icsText(g.division)}`,
       'END:VEVENT',

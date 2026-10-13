@@ -26,10 +26,11 @@ export default async function League({ params, searchParams }: { params: Promise
   const team = typeof pick === 'string' && league.divisions.some((d) => d.standings.some((r) => r.team === pick)) ? pick : null;
   const games = team ? league.games.filter((g) => g.home === team || g.away === team) : league.games;
   const days = [...new Set(games.map((g) => g.day))];
-  // PUB-04: the first of the team's games on or after today, in league time, that has no score.
+  // PUB-04: the first of the team's games on or after today, in league time, that has no score. A postponed game has no time to give (PUB-12).
   const today = dayIn(league.timezone, now());
-  const next = games.find((g) => g.day >= today && g.homeRuns === null);
+  const next = games.find((g) => g.day >= today && g.homeRuns === null && !g.postponed);
   const moved = games.filter((g) => g.movedFrom);
+  const postponed = games.filter((g) => g.postponed);
   const updated = timeIn(league.timezone, league.publishedAt);
   const score = (g: PublicGame) => (g.forfeit ? `forfeit by ${g[g.forfeit]}` : g.homeRuns !== null ? `${g.homeRuns}-${g.awayRuns}` : null);
 
@@ -44,6 +45,17 @@ export default async function League({ params, searchParams }: { params: Promise
           <ul>
             {moved.map((g) => (
               <li key={g.uid}>{g.home} v {g.away}: now {shortDay(g.day)} {g.start} · {g.field}, was {g.movedFrom}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {postponed.length > 0 && (
+        <section aria-label="Postponed">
+          <h2>Postponed</h2>
+          <p>These games will not be played at the time shown. A new time will appear here when the schedule is updated.</p>
+          <ul>
+            {postponed.map((g) => (
+              <li key={g.uid}>{g.home} v {g.away}: was {shortDay(g.day)} {g.start} · {g.field}</li>
             ))}
           </ul>
         </section>
@@ -68,6 +80,7 @@ export default async function League({ params, searchParams }: { params: Promise
                 <li key={`${g.start} ${g.field}`}>
                   {g.start} · {g.field} · {g.home} v {g.away} ({g.division})
                   {score(g) && <> · <strong>{score(g)}</strong></>}
+                  {g.postponed && <> · <strong>postponed</strong></>}
                   {g.movedFrom && <> · <em>moved from {g.movedFrom}</em></>}
                 </li>
               ))}
@@ -136,6 +149,7 @@ export default async function League({ params, searchParams }: { params: Promise
                   <li key={m.id}>
                     {m.label}: {m.a} v {m.b}
                     {m.slot && <> · {m.slot}</>}
+                    {m.postponed && <> · <strong>postponed</strong></>}
                     {m.aRuns !== null && <> · {m.forfeit ? `forfeit by ${m[m.forfeit]}` : `${m.aRuns}-${m.bRuns}`}</>}
                     {m.winner && <> · <strong>{m.winner} {m.aRuns !== null ? 'won' : 'advances on a bye'}</strong></>}
                   </li>

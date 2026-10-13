@@ -1,3 +1,13 @@
+## L-033: postponed on the public page (2026-10-13)
+
+**Built.** PUB-12 and ICAL-03. `PublicGame` and `PublicMatch` in `src/app/l/public-league.ts` gain `postponed`, worked by one function, `isPostponed`: the slot is closed and the game has no score. The loader now selects the slot's `status` and projects only that yes or no. The page lists postponed games above the schedule, marks each on its schedule line and its bracket line, and skips them when it picks a team's next game. The feed puts "Postponed: " in front of the event title and keeps the event's key. No schema change, no new version written, nothing in `src/lib/league/` touched.
+
+**Decided.** D-51, chosen by the owner: the projection gains a yes or no, not the slot's status; the rest of D-33 stands. Defaults inside it: a postponed game is not a next game; a playoff game in a closed slot is marked too; the feed does not set `STATUS:CANCELLED`.
+
+**Measured.** The three new assertions failed without the loader change (3 failed, 10 passed) and pass with it. Gate: lint 0 errors (1 warning, the template's), typecheck clean, 434 tests in 56 files (2 new, and the existing PUB-03 test closes the final's day), `foundation:drift` clean against v1.2.1. `e2e/public-league.spec.ts` against the production build: 4 passed, 1 new.
+
+**Left behind.** A displaced game the reschedule cannot place (RAIN-03) leaves the public page without a word once that version is published. The feed was not opened in a calendar app. `docs/DEMO.md` and the exec brief do not mention the mark. The page still has no stylesheet, so "postponed" is bold text.
+
 ## L-044: a settings save that changes nothing stores nothing (2026-10-13)
 
 **Built.** STAND-10, the open note from L-037. `writeConfig` in `seasons/standings-actions.ts` compares the values before and after with `isDeepStrictEqual` and refuses when they are equal, before it asks for a reason. Both callers (the tiebreak chain and the points and run settings) get it from the one function. No schema change.

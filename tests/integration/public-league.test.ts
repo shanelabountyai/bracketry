@@ -3,6 +3,7 @@ import { advanceClock } from '@/core/clock';
 import { db } from '@/core/db';
 import { generateBracket, placeBracketGames } from '@/app/o/[org]/seasons/bracket-actions';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
+import { closeDay } from '@/app/o/[org]/seasons/rainout-actions';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
 import { blankPublicFairness, blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, roundName, teamCalendar, toPublicFairness, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
 import { shortDay } from '@/lib/league/days';
@@ -137,6 +138,13 @@ describe('loadPublicLeague', () => {
     expect(teamCalendar(placed, 'T1')).toContain(final);
     expect(teamCalendar(placed, 'T2')).not.toContain('Final');
     expect(teamCalendar(placed, 'T2')).not.toMatch(SECRET);
+
+    // PUB-12: the final's day is rained out before it is played
+    await closeDay(SLUG, { seasonId, day: '2026-11-17' });
+    const rained = await load();
+    expect(rained.playoffGames).toMatchObject([{ day: '2026-11-17', postponed: true }]);
+    expect(rained.divisions[0]!.bracket).toMatchObject([{ label: 'Final', postponed: true }]);
+    expect(teamCalendar(rained, 'T0')).toContain('SUMMARY:Postponed: T0 v T1\r\n');
   });
 
   it('gives each team its games per start time and per field, for the published version (PUB-10)', async () => {
@@ -174,6 +182,39 @@ describe('loadPublicLeague', () => {
     const after = await load();
     expect(after.games.filter((g) => g.movedFrom)).toEqual([]);
     expect(after.games.find((g) => g.home === home && g.day === to.day)).toBeTruthy(); // still in its new slot
+  });
+});
+
+describe('a closed slot reads as postponed before any new version (PUB-12, ICAL-03, D-51)', () => {
+  it('marks the unscored games of a closed day, on the page data and in the feed, and nothing else', async () => {
+    await publishFirst();
+    const before = await load();
+    expect(before.games.some((g) => g.postponed)).toBe(false);
+    const day = '2026-10-13';
+    const [scored, open] = await db.placement.findMany({ where: { fieldSlot: { day } }, include: { game: { include: { homeTeam: true, awayTeam: true } } }, orderBy: { fieldSlot: { start: 'asc' } } });
+    await db.gameResult.create({ data: { orgId, gameId: scored!.gameId, homeRuns: 4, awayRuns: 2, enteredBy: ownerId } }); // played before the rain: not postponed
+    await closeDay(SLUG, { seasonId, day });
+
+    const league = await load();
+    expect(JSON.stringify(league)).not.toMatch(SECRET);
+    expect(JSON.stringify(league)).not.toMatch(/closed|status/); // a yes or no, not the slot's status column
+    expect(league.games.filter((g) => g.postponed)).toMatchObject([{ day, home: open!.game.homeTeam.name, away: open!.game.awayTeam.name, homeRuns: null }]);
+    expect(league.games.map((g) => `${g.uid} ${g.day} ${g.start}`)).toEqual(before.games.map((g) => `${g.uid} ${g.day} ${g.start}`)); // no game moved
+    expect(await db.scheduleVersion.count()).toBe(1);
+
+    const home = open!.game.homeTeam.name;
+    const ics = teamCalendar(league, home)!;
+    expect(ics).toContain(`SUMMARY:Postponed: ${home} v ${open!.game.awayTeam.name}\r\n`);
+    expect(ics.match(/SUMMARY:Postponed/g)).toHaveLength(1);
+  });
+
+  it('a playoff game in a closed slot is postponed in the bracket and the feed until it has a score', () => {
+    const slot = { day: '2026-11-17', start: '18:00', field: { name: 'F1' }, status: 'closed' };
+    const match = { id: 'R1M1', round: 1, index: 1, a: { kind: 'team' as const, team: 'a', seed: 1 }, b: { kind: 'team' as const, team: 'b', seed: 2 }, winnerTo: null };
+    expect(toPublicMatch(match, slot, (id) => id).postponed).toBe(true);
+    expect(toPublicMatch(match, { ...slot, status: 'open' }, (id) => id).postponed).toBe(false);
+    expect(toPublicMatch(match, null, (id) => id).postponed).toBe(false);
+    expect(toPublicMatch({ ...match, result: { aRuns: 3, bRuns: 1 }, winner: 'a' }, slot, (id) => id).postponed).toBe(false);
   });
 });
 

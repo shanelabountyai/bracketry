@@ -149,6 +149,7 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **PUB-09** (L-032) A playoff game is named by its round, counted from the end: Final, Semifinal 1, Quarterfinal 3, and "Round 1 game 2" before that. A side still to be decided reads "winner of Semifinal 1".
 - **PUB-10** (L-035) The public page has a "Games by time and field" table for each division: one row per team with its number of games in the published version, then one column per start time and one per field, each holding that team's count (a 0 is shown as 0). Every number is read from `scheduleQuality`; the page and its loader count nothing themselves (D-4). Regular-season games only, crossover games included.
 - **PUB-11** (L-035) The table is names and counts (PUB-03): it goes through an allowlist projection like the rest of the page, and carries no rest days, bye weeks, cost, violations or ids. A wide table scrolls inside its own box, so the page still does not scroll sideways at 390 px (PUB-07).
+- **PUB-12** (L-033) A game of the published version whose slot is closed and which has no score reads "postponed" on the public page from the next read, with no new version: in a list above the schedule, on its line in the schedule, and on its line in the bracket for a playoff game. It is not a team's next game (PUB-04). A game with a score is never postponed. The projection carries a yes or no, not the slot's status (D-51). When a reschedule is published the game is in an open slot again and the mark is gone; PUB-02's "moved from" takes over.
 
 ### QUAL — schedule quality
 
@@ -161,6 +162,7 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **WHATIF-02** Clinched and eliminated flags on points, by exhaustive enumeration when 12 or fewer games remain in the division, otherwise not shown. Stated as such on the page.
 - **ICAL-01** A subscribable calendar feed per team for the published version.
 - **ICAL-02** (L-034) A team's feed also carries its playoff games that have a slot and two known teams, described by division and round (PUB-09), the better seed at home (BRKT-02). They reach the feed through the same allowlist projection as a season game (PUB-03). A game whose teams are not yet known is not in any feed.
+- **ICAL-03** (L-033) A postponed game (PUB-12) stays in the feed at its old time with "Postponed: " in front of its title, and keeps its key, so the event moves when the new time is published.
 - **BENCH-01** The same season inputs are given to an LLM, which is asked for a schedule as JSON. Its answer is scored by `scoreSchedule` and shown beside the generator's: hard violations, unplaced games, soft cost, cost in dollars, seconds. This is the write-up's "when not to use a model" evidence. No result is assumed in advance.
 - **DBL-01** Crossover games between divisions.
 
