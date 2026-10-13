@@ -33,7 +33,7 @@ const seed = (n: number) => generateBracket(SLUG, { seasonId, divisionId, n: Str
 const bracket = async () => (await loadBrackets(await requireOrg(SLUG), seasonId))!.byDivision[0]!.bracket!;
 const games = async () => Object.fromEntries((await db.bracketGame.findMany({ include: { fieldSlot: true } })).map((g) => [g.matchId, g]));
 const place = async () => placeBracketGames(SLUG, { bracketId: (await db.bracket.findFirstOrThrow()).id });
-const score = async (matchId: string, aRuns: number, bRuns: number, forfeit = '') => recordBracketResult(SLUG, { gameId: (await games())[matchId]!.id, aRuns: String(aRuns), bRuns: String(bRuns), forfeit });
+const score = async (matchId: string, aRuns: number, bRuns: number, forfeit = '', reason = '') => recordBracketResult(SLUG, { gameId: (await games())[matchId]!.id, aRuns: String(aRuns), bRuns: String(bRuns), forfeit, reason });
 const clear = async (matchId: string) => clearBracketResult(SLUG, { gameId: (await games())[matchId]!.id });
 
 beforeEach(async () => {
@@ -145,16 +145,18 @@ describe('placing and playing', () => {
     expect(g.R2M1!.fieldSlot!.day).toBe('2026-12-01');
 
     // A correction before the final is played changes who is in it.
-    expect(await score('R1M1', 1, 5)).toEqual({ notice: expect.stringContaining('Correction saved') });
+    expect(await score('R1M1', 1, 5)).toEqual({ error: 'Give a reason for the correction.' }); // SCORE-09
+    expect(await score('R1M1', 1, 5, '', 'Scorebook error')).toEqual({ notice: expect.stringContaining('Correction saved') });
+    expect(await db.auditEvent.findFirstOrThrow({ where: { action: 'bracket.result_corrected' } })).toMatchObject({ data: expect.objectContaining({ reason: 'Scorebook error' }) });
     expect((await games()).R2M1!.aTeamId).toBe(team.T3);
 
     await setNow('2026-12-02T18:00:00Z');
     await score('R2M1', 2, 6);
     expect((await bracket()).bracket.rounds[1]![0]!.winner).toBe(team.T2);
-    expect(await score('R1M1', 5, 1)).toEqual({ error: expect.stringContaining('Clear that result first') });
+    expect(await score('R1M1', 5, 1, '', 'x')).toEqual({ error: expect.stringContaining('Clear that result first') });
     expect(await clear('R1M1')).toEqual({ error: expect.stringContaining('Clear that result first') });
     expect(await clear('R2M1')).toEqual({ notice: 'Result cleared.' });
-    expect(await score('R1M1', 5, 1)).toEqual({ notice: expect.stringContaining('Correction saved') });
+    expect(await score('R1M1', 5, 1, '', 'x')).toEqual({ notice: expect.stringContaining('Correction saved') });
     g = await games();
     expect([g.R2M1!.aTeamId, g.R2M1!.aRuns, g.R2M1!.winnerTeamId]).toEqual([team.T0, null, null]);
   });

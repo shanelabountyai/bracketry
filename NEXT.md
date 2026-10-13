@@ -1,8 +1,8 @@
 # NEXT
 
-The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; L-023 to L-026 are done. Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
+The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; L-023 to L-026 are done, and L-027 from the P2 persona review. Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
 
-PICK UP HERE: L-027, score entry fixes (S; Sonnet): the first row of the P2 section in `docs/prds/06-backlog.md`, added on 2026-10-12 from three persona reviews. The P2 rows have no story IDs, so write the acceptance criteria into `00-master-prd.md` first. L-031, L-033, L-036 and L-039 each need a decision before code; L-040 and L-041 are blocked outside this repo.
+PICK UP HERE: L-028, results for tonight (S; Sonnet): the second row of the P2 section in `docs/prds/06-backlog.md`. L-027 is done (SCORE-04 to SCORE-09, D-44). The P2 rows have no story IDs, so write the acceptance criteria into `00-master-prd.md` first, as L-027 did. L-031, L-033, L-036 and L-039 each need a decision before code; L-040 and L-041 are blocked outside this repo.
 
 Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The three LinkedIn drafts (Ledger 114, 115 and 116) were drafted without a review pass by the owner. The Ledger's project list has no `bracketry` entry. D-27 and D-30: commissioners do setup and scores; the scorekeeper permission needs a template edit. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
@@ -23,3 +23,5 @@ Open from L-024: the feed was not opened in a calendar app (TZID with no VTIMEZO
 Open from L-026: D-41 was taken as defaults (one season-wide `crossoverRounds`, every two divisions, no chosen crossover week); say so if any part should change. No browser step sets crossover rounds. The demo seed, `docs/DEMO.md` and the exec brief have no crossover games. Lowering the setting after a generation leaves the dropped pairings in the what-if form.
 
 Open from L-025: one season, nine calls, one prompt (D-43); nothing was measured on an impossible season, pins or a larger league. Opus matched the counted floor of 100 twice where the demo seed gives 122; seeds 1 to 20 give 100 to 124, so the demo's seed 2027 is one of the generator's worse ones and was left alone. `docs/DEMO.md`, the exec brief (version 2) and Ledger draft 116 now carry the result. The generator timed 6.1 s in the dry run and 0.64 s in the real one; not looked into.
+
+Open from L-027: D-44 was taken as defaults (the server, not the browser, refuses an empty run box; a season correction's boxes are empty, a playoff correction's are prefilled); say so if any part should change. No browser test drives the season score form. The versions table still shows UTC.

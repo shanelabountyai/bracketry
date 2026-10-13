@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { advanceClock } from '@/core/clock';
 import { db } from '@/core/db';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
+import { timeIn } from '@/app/o/[org]/seasons/rainout-load';
 import { recordResult } from '@/app/o/[org]/seasons/result-actions';
 import { publish } from '@/app/o/[org]/seasons/version-actions';
 import { resetAuthTables, signInAs } from '../helpers/auth';
@@ -70,6 +71,22 @@ describe('recordResult', () => {
     expect(await recordResult(SLUG, { gameId: g, correction: 'on', reason: 'x' })).toEqual({ error: 'There is no score to correct yet.' });
     await recordResult(SLUG, { gameId: g, homeRuns: '9', awayRuns: '1', forfeit: 'away' });
     expect(await db.gameResult.findFirstOrThrow({ where: { gameId: g } })).toMatchObject({ homeRuns: 0, awayRuns: 0, forfeit: 'away', supersedesId: null });
+  });
+
+  it('refuses an untouched form instead of saving 0-0, and still takes a forfeit with empty boxes (SCORE-04)', async () => {
+    await publishOne();
+    const g = await placedGame('2026-10-06');
+    const refused = { error: 'Enter the runs for both teams, or choose a forfeit.' };
+    expect(await recordResult(SLUG, { gameId: g, homeRuns: '', awayRuns: '', forfeit: '' })).toEqual(refused);
+    expect(await recordResult(SLUG, { gameId: g, homeRuns: '3', awayRuns: '' })).toEqual(refused);
+    expect(await recordResult(SLUG, { gameId: g })).toEqual(refused);
+    expect(await db.gameResult.count()).toBe(0);
+    expect(await recordResult(SLUG, { gameId: g, homeRuns: '0', awayRuns: '0' })).toEqual({ notice: 'Score saved.' }); // a typed 0-0 is a real tie
+    expect(await recordResult(SLUG, { gameId: g, homeRuns: '', awayRuns: '', forfeit: 'home', correction: 'on', reason: 'No-show' })).toEqual({ notice: expect.stringContaining('Correction saved') });
+  });
+
+  it('shows an instant in league time (SCORE-08)', () => {
+    expect(timeIn('America/Chicago', new Date('2026-10-07T01:30:00Z'))).toBe('2026-10-06 20:30');
   });
 
   it('refuses negative or non-numeric runs', async () => {

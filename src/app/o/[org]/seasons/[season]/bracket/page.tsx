@@ -71,6 +71,7 @@ export default async function Playoffs({ params }: { params: Promise<{ org: stri
                                 <label>{name(g.aTeamId!)} <input name="aRuns" type="number" min={0} max={99} defaultValue={m.result?.aRuns} /></label>
                                 <label>{name(g.bTeamId!)} <input name="bRuns" type="number" min={0} max={99} defaultValue={m.result?.bRuns} /></label>
                                 <label>Forfeit <select name="forfeit" defaultValue={m.result?.forfeit ?? ''}><option value="">none</option><option value="a">by {name(g.aTeamId!)}</option><option value="b">by {name(g.bTeamId!)}</option></select></label>
+                                {m.result && <label>Reason for the correction <input name="reason" required maxLength={500} /></label>}
                                 <button type="submit">{m.result ? 'Correct score' : 'Save score'}</button>
                               </ActionForm>
                             )}

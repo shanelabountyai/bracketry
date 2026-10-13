@@ -132,7 +132,7 @@ export const placeBracketGames = orgAction(PERM, z.object({ bracketId: ref('brac
 });
 
 /** Lock the bracket, rebuild it from its rows, make one engine call, store what the engine returns. */
-async function change(ctx: OrgCtx, game: { id: string; bracketId: string; matchId: string; bracket: { seeding: unknown; divisionId: string } }, action: string, fn: (b: Bracket) => Bracket) {
+async function change(ctx: OrgCtx, game: { id: string; bracketId: string; matchId: string; bracket: { seeding: unknown; divisionId: string } }, action: string, fn: (b: Bracket) => Bracket, reason?: string) {
   await db.$transaction(async (tx) => {
     if (!(await lock(tx, game.bracketId))) throw new Refused('This bracket was regenerated. Reload.');
     const before = replay((game.bracket.seeding as Seeding).teams, await tx.bracketGame.findMany({ where: { bracketId: game.bracketId } }));
@@ -144,18 +144,20 @@ async function change(ctx: OrgCtx, game: { id: string; bracketId: string; matchI
     }
     for (const m of after.rounds.flat()) await tx.bracketGame.updateMany({ where: { bracketId: game.bracketId, matchId: m.id }, data: cells(m) });
     const m = (x: Bracket) => x.rounds.flat().find((y) => y.id === game.matchId);
-    await audit(ctx, action, { targetType: 'division', targetId: game.bracket.divisionId, data: { bracketId: game.bracketId, matchId: game.matchId, before: m(before)?.result ?? null, after: m(after)?.result ?? null } }, tx);
+    await audit(ctx, action, { targetType: 'division', targetId: game.bracket.divisionId, data: { bracketId: game.bracketId, matchId: game.matchId, before: m(before)?.result ?? null, after: m(after)?.result ?? null, ...(reason ? { reason } : {}) } }, tx);
   });
 }
 const loadGame = async (ctx: OrgCtx, id: string) =>
   (await db.bracketGame.findFirst({ where: { id, ...inOrg(ctx) }, include: { fieldSlot: true, bracket: { include: { division: { include: { season: true } } } } } })) ?? notFound();
 
-const runs = z.coerce.number('Runs must be a whole number.').int('Runs must be a whole number.').min(0, 'Runs cannot be negative.').max(99, 'Runs are at most 99.');
+// An empty box is "not entered", never 0 (SCORE-04): z.coerce alone reads '' as 0, which saved an untouched form as 0-0.
+const runs = z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number('Runs must be a whole number.').int('Runs must be a whole number.').min(0, 'Runs cannot be negative.').max(99, 'Runs are at most 99.').optional());
+const NO_RUNS = 'Enter the runs for both teams, or choose a forfeit.';
 
-/** BRKT-05: a result feeds the winner forward. Recording again is a correction, refused once the next game has a result. */
+/** BRKT-05: a result feeds the winner forward. Recording again is a correction: it needs a reason (SCORE-09, kept in the audit row) and is refused once the next game has a result. */
 export const recordBracketResult = orgAction(
   PERM,
-  z.object({ gameId: ref('bracketGame'), aRuns: runs.default(0), bRuns: runs.default(0), forfeit: z.enum(['', 'a', 'b']).optional() }),
+  z.object({ gameId: ref('bracketGame'), aRuns: runs, bRuns: runs, forfeit: z.enum(['', 'a', 'b']).optional(), reason: z.string().trim().max(500, 'The reason is at most 500 characters.').optional() }),
   async (ctx, i) => {
     const g = await loadGame(ctx, i.gameId);
     const season = g.bracket.division.season;
@@ -163,8 +165,10 @@ export const recordBracketResult = orgAction(
     if (!g.fieldSlot) throw new Refused('Place this game in a slot before scoring it.');
     if (g.fieldSlot.day > dayIn(season.timezone, now())) throw new Refused(`That game is on ${g.fieldSlot.day}. Only games on or before today can be scored.`);
     const forfeit = i.forfeit || undefined;
-    const result = forfeit ? { aRuns: 0, bRuns: 0, forfeit } : { aRuns: i.aRuns, bRuns: i.bRuns }; // a forfeit ignores entered runs, as in the season
-    await change(ctx, g, g.aRuns === null ? 'bracket.result_entered' : 'bracket.result_corrected', (b) => recordResult(b, g.matchId, result));
+    if (!forfeit && (i.aRuns === undefined || i.bRuns === undefined)) throw new Refused(NO_RUNS);
+    if (g.aRuns !== null && !i.reason) throw new Refused('Give a reason for the correction.');
+    const result = forfeit ? { aRuns: 0, bRuns: 0, forfeit } : { aRuns: i.aRuns!, bRuns: i.bRuns! }; // a forfeit ignores entered runs, as in the season
+    await change(ctx, g, g.aRuns === null ? 'bracket.result_entered' : 'bracket.result_corrected', (b) => recordResult(b, g.matchId, result), g.aRuns === null ? undefined : i.reason);
     revalidatePath(page(ctx.slug, season.id));
     return { notice: g.aRuns === null ? 'Score saved. The winner moves on.' : 'Correction saved. The earlier score is in the audit log.' };
   },

@@ -8,6 +8,8 @@ import { loadSeasonInput } from './load-input';
 
 /** 'YYYY-MM-DD' for an instant in an IANA zone. Explicit timeZone, so the process timezone never leaks in (D-6). */
 export const dayIn = (tz: string, at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+/** 'YYYY-MM-DD HH:MM' for an instant in an IANA zone, for showing when something was entered in league time (SCORE-08). */
+export const timeIn = (tz: string, at: Date) => new Intl.DateTimeFormat('sv-SE', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' }).format(at);
 
 /**
  * The published schedule as the rainout tool sees it (RAIN-01..05).

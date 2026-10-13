@@ -10,7 +10,7 @@ import { compareAssignments } from '@/lib/league/compare';
 import { DEFAULT_RULES, isPublishable, type Rules, type ScoreReport } from '@/lib/league/types';
 import { generate } from '../generate-actions';
 import { closeDay, proposeReschedule, regenerateRest } from '../rainout-actions';
-import { loadRainout } from '../rainout-load';
+import { loadRainout, timeIn } from '../rainout-load';
 import { recordResult } from '../result-actions';
 import { publish, removePin, setPin } from '../version-actions';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, saveRules, setCrossover, setSlotOpen } from '../actions';
@@ -271,25 +271,28 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
           const history = results.filter((r) => r.gameId === pl.gameId);
           const last = history[history.length - 1];
           if (!g) return null;
+          const [home, away] = [teamName(g.homeTeamId), teamName(g.awayTeamId)];
+          const show = (r: (typeof results)[number]) => (r.forfeit ? `${r.forfeit === 'home' ? home : away} forfeited` : `${r.homeRuns}–${r.awayRuns}${r.homeRuns === r.awayRuns ? ' (Tie)' : ''}`);
           return (
             <li key={pl.gameId}>
               {gameLabel(g.key)} · {slotLabel(pl.fieldSlotId)} ·{' '}
-              {last ? (last.forfeit ? `${last.forfeit} forfeited` : `${last.homeRuns}–${last.awayRuns}`) : 'no score'}
+              {last ? show(last) : 'no score'}
               {history.length > 1 && (
                 <ol>
                   {history.map((r) => (
-                    <li key={r.id}>{r.forfeit ? `${r.forfeit} forfeited` : `${r.homeRuns}–${r.awayRuns}`} · {author(r.enteredBy)} · {r.enteredAt.toISOString().slice(0, 16)}Z{r.reason ? ` · ${r.reason}` : ''}</li>
+                    <li key={r.id}>{show(r)} · {author(r.enteredBy)} · {timeIn(season.timezone, r.enteredAt)}{r.reason ? ` · ${r.reason}` : ''}</li>
                   ))}
                 </ol>
               )}
               {edit && (
                 <ActionForm action={bind(recordResult)}>
                   <input type="hidden" name="gameId" value={g.id} />
-                  <label>Home <input name="homeRuns" type="number" min={0} max={99} defaultValue={0} /></label>
-                  <label>Away <input name="awayRuns" type="number" min={0} max={99} defaultValue={0} /></label>
-                  <label>Forfeit by <select name="forfeit" defaultValue=""><option value="">none</option><option value="home">home</option><option value="away">away</option></select></label>
-                  {last && <label><input name="correction" type="checkbox" /> This corrects the score above</label>}
-                  <label>Reason (required for a correction) <input name="reason" maxLength={500} /></label>
+                  {/* No `required` on the run boxes: a forfeit leaves them empty. The action refuses an empty box otherwise (SCORE-04). */}
+                  <label>{home} <input name="homeRuns" type="number" min={0} max={99} /></label>
+                  <label>{away} <input name="awayRuns" type="number" min={0} max={99} /></label>
+                  <label>Forfeit by <select name="forfeit" defaultValue=""><option value="">none</option><option value="home">{home}</option><option value="away">{away}</option></select></label>
+                  {last && <label><input name="correction" type="checkbox" defaultChecked /> This corrects the score above</label>}
+                  {last && <label>Reason for the correction <input name="reason" required maxLength={500} /></label>}
                   <button type="submit">{last ? 'Save correction' : 'Save score'}</button>
                 </ActionForm>
               )}

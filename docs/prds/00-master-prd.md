@@ -93,6 +93,12 @@ Story IDs are the acceptance criteria. Backlog rows in `06-backlog.md` point her
 - **SCORE-01** A scorekeeper enters runs for each side, or marks a forfeit by one side. Only games on or before today (season timezone, injected clock) accept a score.
 - **SCORE-02** Results are append-only. A correction is a new row that supersedes the old one and records who and why. The history of a game's result is viewable.
 - **SCORE-03** A score for a game that is not in the published version, or a second score entered without marking it a correction, is refused.
+- **SCORE-04** (L-027) The run boxes start empty. A score with an empty run box and no forfeit is refused and stores nothing; a typed 0-0 is a tie. A forfeit is accepted with the boxes empty.
+- **SCORE-05** (L-027) When a game has a score, the form opens with "correction" ticked and shows the reason field; the reason field is not shown before there is a score.
+- **SCORE-06** (L-027) The run boxes, the forfeit choice and a forfeit in the result line and the history name the two teams, never "home" or "away".
+- **SCORE-07** (L-027) A saved tie reads as a tie: the score is followed by "(Tie)".
+- **SCORE-08** (L-027) A time in the result history is in the season's timezone, not UTC.
+- **SCORE-09** (L-027) Correcting a playoff score requires a reason, as a season correction does. The bracket row is still overwritten (D-32), so the reason is kept in the audit row.
 
 ### STAND — standings
 

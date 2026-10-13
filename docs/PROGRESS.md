@@ -1,3 +1,15 @@
+## L-027: score entry fixes (2026-10-13)
+
+**Built.** Six fixes from the scorekeeper persona review, written first as SCORE-04 to SCORE-09 in `00-master-prd.md`. `recordResult` and `recordBracketResult` read an empty run box as "not entered" and refuse it unless a forfeit is chosen; before, `z.coerce.number` read `''` as 0 and an untouched form saved 0-0. The season form's run boxes start empty and are labelled with the two team names, as is the forfeit choice, the result line and the history. With a score present the form opens with "correction" ticked and only then shows the reason field. A level score is followed by "(Tie)". History times go through a new `timeIn(tz, at)` beside `dayIn`, in the season's timezone. A playoff correction is refused without a reason and the reason is stored in the audit row.
+
+**Decided.** D-44.
+
+**Measured.** Gate: lint 0 errors (1 warning, the template's), typecheck clean, 405 tests in 53 files (403 before; 2 new and one extended), `foundation:drift` clean against v1.2.0. `e2e/golden-path.spec.ts`: 1 passed.
+
+**Left behind.** No browser test drives the season score form; the golden path scores playoff games only and seeds season results in SQL, so the ticked box, the hidden reason field and the team-name labels were checked by reading the markup, not by a spec. The versions table on the same page still shows its times in UTC; the row asked for the result history only. The public page and standings page were not checked for "home/away" wording. A season correction's run boxes are empty while a playoff correction's are prefilled with the current score.
+
+---
+
 ## L-025: LLM against the generator (2026-10-12)
 
 **Built.** `scripts/league-bench.ts` (`npm run league:bench`, `--dry` for no calls): loads the demo season from the local database, gives it to Haiku 5.5, Sonnet 5.5 and Opus 5.5 three times each, and scores every answer with `scoreSchedule` beside `generateSchedule` at the demo seed. Spend is added up from each response's usage and checked before every call against the most that call can cost. Rows, usage, answers and the prompt are in `docs/bench-01-results.json`. `tests/unit/league-bench.test.ts` (3 tests): pricing, the short-name round trip, and a made-up slot reaching `scoreSchedule`.
