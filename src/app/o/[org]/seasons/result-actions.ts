@@ -10,11 +10,11 @@ import { db } from '@/core/db';
 import { Refused } from '@/core/errors';
 import { dayIn } from './rainout-load';
 
-// Score entry (SCORE-01 to SCORE-03, D-13). Same permission as setup: the scorekeeper role needs a template
-// edit, so commissioners (org.update) enter and correct scores for now (D-30). A result row is never updated;
+// Score entry (SCORE-01 to SCORE-03, D-13). `results.write` (template v1.3.0): the scorekeeper role holds it and
+// nothing else, and owners and admins hold it too (L-040, D-30's restore). A result row is never updated;
 // a correction is a new row that supersedes the latest one, and so is a void (SCORE-14, D-45).
 // After a void the game has no score: the next score is a plain entry that supersedes the void row.
-const PERM = 'org.update' as const;
+const PERM = 'results.write' as const;
 
 // An empty box is "not entered", never 0 (SCORE-04): z.coerce alone reads '' as 0, which saved an untouched form as 0-0.
 const runs = z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number('Runs must be a whole number.').int('Runs must be a whole number.').min(0, 'Runs cannot be negative.').max(99, 'Runs are at most 99.').optional());

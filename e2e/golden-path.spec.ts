@@ -256,3 +256,28 @@ test('edit a team, preview and revoke a draft, void and re-enter a score, withdr
   await page.getByRole('button', { name: 'Save crossover rounds' }).click();
   await expect(page.getByText('This season has 6 crossover games.')).toBeVisible();
 });
+
+// L-040: the seeded scorekeeper (no MFA) sees the score forms and none of the commissioner's, and a correction saves.
+test('a scorekeeper corrects a score and sees nothing else that edits', async ({ page }) => {
+  const base = `/o/${league.slug}/seasons/${league.seasonId}`;
+  await page.goto('/demo');
+  await page.getByRole('button', { name: league.scorekeeper }).click();
+  await expect(page.getByRole('heading', { name: 'Your orgs' })).toBeVisible();
+  await page.goto(base);
+  for (const name of ['Close day', 'Publish', 'Withdraw team', 'Save team', 'Add makeup slot', 'Propose reschedule', 'Regenerate the rest', 'Pin game'])
+    await expect(page.getByRole('button', { name, exact: true }), name).toHaveCount(0);
+  // A correction, not a first score: the seed scores every game before today, and today may have no games (Tue/Thu only).
+  const gameId = await page.locator('form', { has: page.getByRole('button', { name: 'Save correction' }) }).first().locator('input[name="gameId"]').inputValue();
+  const scored = page.locator('li', { has: page.locator(`input[name="gameId"][value="${gameId}"]`) });
+  await scored.getByRole('spinbutton').nth(0).fill('16');
+  await scored.getByRole('spinbutton').nth(1).fill('13');
+  await scored.getByLabel('Reason for the correction').fill('Scorebook recount');
+  await scored.getByRole('checkbox', { name: /^This is / }).check();
+  await scored.getByRole('button', { name: 'Save correction' }).click();
+  await expect(scored).toContainText('16–13');
+  await expect(scored).toContainText('Scorebook recount');
+  await page.goto(`${base}/bracket`);
+  await expect(page.getByRole('button', { name: 'Generate bracket' })).toHaveCount(0);
+  await page.goto(`${base}/standings`);
+  await expect(page.getByRole('button', { name: 'Save points and runs' })).toHaveCount(0);
+});

@@ -59,6 +59,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
   const placed = async (versionId: string) => Object.fromEntries((await db.placement.findMany({ where: { scheduleVersionId: versionId, ...inOrg(ctx) }, select: { fieldSlotId: true, game: { select: { key: true } } } })).map((p) => [p.game.key, p.fieldSlotId]));
   const moves = va && vb ? compareAssignments(await placed(va.id), await placed(vb.id)) : null;
   const edit = can(ctx.role, 'org.update');
+  const score = can(ctx.role, 'results.write'); // a scorekeeper sees the score forms and nothing else that edits (L-040)
   const bind = <A extends unknown[], R>(fn: (slug: string, ...a: A) => R) => fn.bind(null, ctx.slug);
   const fieldName = (id: string) => fields.find((f) => f.id === id)?.name ?? '?';
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '?';
@@ -98,7 +99,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
             ))}
           </ol>
         )}
-        {edit && day <= rain.today && (
+        {score && day <= rain.today && (
           <ActionForm action={bind(recordResult)}>
             <input type="hidden" name="gameId" value={g.id} />
             {/* No `required` on the run boxes: a forfeit leaves them empty. The action refuses an empty box otherwise (SCORE-04). */}
@@ -112,7 +113,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
             <button type="submit">{last ? 'Save correction' : 'Save score'}</button>
           </ActionForm>
         )}
-        {edit && last && (
+        {score && last && (
           <ActionForm action={bind(voidResult)}>
             <input type="hidden" name="gameId" value={g.id} />
             <label>Entered on the wrong game? Reason <input name="reason" required maxLength={500} /></label>

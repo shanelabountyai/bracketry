@@ -17,6 +17,7 @@ export default async function Playoffs({ params }: { params: Promise<{ org: stri
   if (!z.uuid().safeParse(id).success) notFound();
   const s = (await loadBrackets(ctx, id)) ?? notFound();
   const edit = can(ctx.role, 'org.update');
+  const score = can(ctx.role, 'results.write'); // L-040
   const bind = <A extends unknown[], R>(fn: (slug: string, ...a: A) => R) => fn.bind(null, ctx.slug);
   const base = `/o/${ctx.slug}/seasons/${s.season.id}`;
 
@@ -65,7 +66,7 @@ export default async function Playoffs({ params }: { params: Promise<{ org: stri
                             {ready && <> · {slot ? `${slot.day} ${slot.start} · ${slot.field.name}${slot.status === 'closed' && !m.result ? ' (slot closed: place it again)' : ''}` : 'no slot yet'}</>}
                             {m.result && <> · {m.result.forfeit ? `forfeit by ${show(m[m.result.forfeit])}` : `${m.result.aRuns}-${m.result.bRuns}`}</>}
                             {m.winner && <> · <strong>{name(m.winner)} {m.result ? 'won' : 'advances on a bye'}</strong></>}
-                            {edit && ready && slot && (
+                            {score && ready && slot && (
                               <ActionForm action={bind(recordBracketResult)}>
                                 <input type="hidden" name="gameId" value={g.id} />
                                 <label>{name(g.aTeamId!)} <input name="aRuns" type="number" min={0} max={99} defaultValue={m.result?.aRuns} /></label>
@@ -75,7 +76,7 @@ export default async function Playoffs({ params }: { params: Promise<{ org: stri
                                 <button type="submit">{m.result ? 'Correct score' : 'Save score'}</button>
                               </ActionForm>
                             )}
-                            {edit && m.result && <ActionForm action={bind(clearBracketResult)}><input type="hidden" name="gameId" value={g.id} /><button type="submit">Clear result</button></ActionForm>}
+                            {score && m.result && <ActionForm action={bind(clearBracketResult)}><input type="hidden" name="gameId" value={g.id} /><button type="submit">Clear result</button></ActionForm>}
                           </li>
                         );
                       })}

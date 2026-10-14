@@ -2,7 +2,7 @@
 
 **Sources:** `00-master-prd.md` (story IDs are the acceptance criteria), `07-decisions.md` (overrides PRD text), `01-generator-spec.md` and `02-standings-bracket-spec.md` (normative for L-003 to L-009).
 
-One item per session, top to bottom. ✅ built and committed, ⬜ not started (`grep ⬜` answers "what is next"). Sizes: **S** short session, **M** one focused session, **L** two to three. The loop is in `docs/START-HERE.md`. Suggested model is a suggestion; confirm it at the start of each session.
+One item per session, top to bottom. ✅ built and committed, ⬜ not started (`grep ⬜` answers "what is next"), ✖ will not be built (the row names the decision). Sizes: **S** short session, **M** one focused session, **L** two to three. The loop is in `docs/START-HERE.md`. Suggested model is a suggestion; confirm it at the start of each session.
 
 **Golden paths.** (1) End of Milestone 1: one command generates the capstone season, simulates results, resolves a three-way tie and crowns a champion, with no database. (2) End of Milestone 2: a commissioner does the same in the app, then handles a rainout that moves only the rained-out games.
 
@@ -77,8 +77,8 @@ From three read-only reviews in the chairs of the PRD's personas (commissioner, 
 | 38 | ✅ L-037 | Editor for points, the run-difference cap and forfeit settings (STAND-02; open from L-016) | Commissioner | M | Opus | L-016 |
 | 39 | ✅ L-038 | Copy a season's divisions, teams and fields into a new season | Commissioner | S | Sonnet | L-012 |
 | 40 | ✅ L-039 | A private preview before a season is public: a secret, expiring, revocable link to one draft (PUB-13, D-53). D-33 stands | Commissioner | M | Opus | L-019 |
-| 41 | ⬜ L-040 | Scorekeeper role: enter and correct scores and nothing else. Blocked: needs a permission added in `saas-foundation` (D-30), not here | Scorekeeper, commissioner | M | Opus | template release |
-| 42 | ⬜ L-041 | Notices leave the outbox: one confirmed send with a mail key. Blocked while the project is not deployed (D-36) | Commissioner | S | Sonnet | deployment |
+| 41 | ✅ L-040 | Scorekeeper role: enter and correct scores and nothing else. Built on `saas-foundation` v1.3.0's `results.write` (D-30's restore, D-55) | Scorekeeper, commissioner | M | Opus | template release |
+| 42 | ✖ L-041 | Notices leave the outbox: one confirmed send with a mail key. Not built while D-36 stands (D-56) | Commissioner | S | Sonnet | deployment |
 | 43 | ✅ L-042 | The rainout tool sees placed playoff games: a reschedule or a regeneration no longer proposes a draft that publish refuses for a playoff clash (open note from L-034) | Commissioner | S | Opus | L-034, L-017 |
 | 44 | ✅ L-043 | A new season refuses a first or last day that is not a real day (found in L-038) | Commissioner | S | Sonnet | L-012 |
 | 45 | ✅ L-044 | A standings-settings save that changes nothing stores nothing (open note from L-037) | Commissioner | S | Sonnet | L-037 |

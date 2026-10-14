@@ -18,10 +18,11 @@ import { roundName } from '@/app/l/public-league';
 import { cells, loadBrackets, playoffGame, playoffKey, replay, standingsFingerprint, type Seeding } from './bracket-load';
 import { dayIn, loadRainout } from './rainout-load';
 
-// Playoffs (BRKT-01..05, D-15, D-32). Same permission as setup and scores (D-27, D-30).
+// Playoffs (BRKT-01..05, D-15, D-32). Setup takes `org.update` (D-27); a playoff score takes `results.write`, as a season score does (L-040).
 // The bracket rows are the engine's bracket, stored: every change rebuilds it from the frozen seeds and the stored
 // results, makes one engine call, and writes back what the engine returns.
 const PERM = 'org.update' as const;
+const SCORE = 'results.write' as const;
 const page = (slug: string, seasonId: string) => `/o/${slug}/seasons/${seasonId}/bracket`;
 const isP2002 = (e: unknown) => (e as { code?: string })?.code === 'P2002';
 type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
@@ -176,7 +177,7 @@ const NO_RUNS = 'Enter the runs for both teams, or choose a forfeit.';
 
 /** BRKT-05: a result feeds the winner forward. Recording again is a correction: it needs a reason (SCORE-09, kept in the audit row) and is refused once the next game has a result. */
 export const recordBracketResult = orgAction(
-  PERM,
+  SCORE,
   z.object({ gameId: ref('bracketGame'), aRuns: runs, bRuns: runs, forfeit: z.enum(['', 'a', 'b']).optional(), reason: z.string().trim().max(500, 'The reason is at most 500 characters.').optional() }),
   async (ctx, i) => {
     const g = await loadGame(ctx, i.gameId);
@@ -195,7 +196,7 @@ export const recordBracketResult = orgAction(
 );
 
 /** The other half of BRKT-05: a later result is cleared before an earlier one can be corrected. */
-export const clearBracketResult = orgAction(PERM, z.object({ gameId: ref('bracketGame') }), async (ctx, i) => {
+export const clearBracketResult = orgAction(SCORE, z.object({ gameId: ref('bracketGame') }), async (ctx, i) => {
   const g = await loadGame(ctx, i.gameId);
   await change(ctx, g, 'bracket.result_cleared', (b) => clearResult(b, g.matchId));
   revalidatePath(page(ctx.slug, g.bracket.division.season.id));

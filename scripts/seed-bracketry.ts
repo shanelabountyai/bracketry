@@ -21,7 +21,7 @@ import { DEFAULT_RULES, DEFAULT_STANDINGS, isPublishable, type GameResult } from
 import { NAMES } from './league-capstone';
 import { DEMO_TOTP_SECRET } from './seed-demo';
 
-export const EASTSIDE = { slug: 'eastside', name: 'Eastside Rec Softball', email: 'commissioner@eastside.demo.test' } as const;
+export const EASTSIDE = { slug: 'eastside', name: 'Eastside Rec Softball', email: 'commissioner@eastside.demo.test', scorekeeper: 'scorekeeper@eastside.demo.test' } as const;
 const TZ = 'America/Chicago';
 const SEED = 2027;
 const WEEKS = 7;
@@ -81,6 +81,9 @@ export async function seedBracketry() {
   const account = { isDemo: true, name: 'Commissioner (Eastside)', totpSecretSealed: sealSecret(DEMO_TOTP_SECRET, 'totp'), totpEnrolledAt: now(), totpLastStep: null };
   const user = await db.user.upsert({ where: { email: EASTSIDE.email }, create: { email: EASTSIDE.email, ...account }, update: account });
   await db.membership.upsert({ where: { orgId_userId: { orgId: org.id, userId: user.id } }, create: { orgId: org.id, userId: user.id, role: 'owner' }, update: { role: 'owner' } });
+  // L-040: a volunteer who enters scores and nothing else. No TOTP: the template does not MFA-gate a scorekeeper (D-21 there).
+  const scorer = await db.user.upsert({ where: { email: EASTSIDE.scorekeeper }, create: { email: EASTSIDE.scorekeeper, isDemo: true, name: 'Scorekeeper (Eastside)' }, update: { isDemo: true } });
+  await db.membership.upsert({ where: { orgId_userId: { orgId: org.id, userId: scorer.id } }, create: { orgId: org.id, userId: scorer.id, role: 'scorekeeper' }, update: { role: 'scorekeeper' } });
   const o = { orgId: org.id };
   const ctx = { ...o, userId: user.id, slug: org.slug, role: 'owner' } as OrgCtx;
 
@@ -157,6 +160,7 @@ export async function seedBracketry() {
   return {
     slug: org.slug,
     email: EASTSIDE.email,
+    scorekeeper: EASTSIDE.scorekeeper,
     seasonId: season.id,
     today,
     /** The next day with games: the one to rain out. */
@@ -170,6 +174,7 @@ export async function seedBracketry() {
       `${played.length} games before ${today} have a score. ${found.trio.map((t) => names.get(t)).join(', ')} are level on points in A Division, ranked in that order by the tiebreak chain.`,
       `Next game day (the one to rain out): ${rainDay}.`,
       `Sign in at /demo (DEMO_MODE=1) as ${EASTSIDE.email}, then open /o/${org.slug}/seasons/${season.id}`,
+      `${EASTSIDE.scorekeeper} is a scorekeeper: score forms only.`,
     ],
   };
 }

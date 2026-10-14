@@ -1,3 +1,13 @@
+## L-040: scorekeeper role (2026-10-14)
+
+**Built.** In `saas-foundation` first, released as v1.3.0 (`e8c0f74`, tagged): a `results.write` permission held by owner, admin and a new `scorekeeper` role that holds nothing else; a migration that adds the enum value; and the template spec's D-21. Merged here (`e954fa1`) with one conflict, `NEXT.md`, kept as ours. Then here: `recordResult`, `voidResult`, `recordBracketResult` and `clearBracketResult` take `results.write` (D-30's restore); the season page's score and void forms and the bracket page's score and clear forms show on `results.write`, and every other form on those pages still needs `org.update`. The seed adds a demo scorekeeper, `scorekeeper@eastside.demo.test`, with no TOTP.
+
+**Decided.** D-55: the owner chose the names `results.write`/`scorekeeper` and no MFA for the role. Defaults inside it: clearing a playoff result counts as a correction; the seed gets a demo scorekeeper. D-56: L-041 is marked ✖ and not built while D-36 stands; D-36 is unchanged.
+
+**Measured.** The template change found two latent defects in its own core, and both shipped as `security:` lines in v1.3.0. The MFA guard was `role !== 'member'`, so any new role would have been MFA-gated by accident. `revokeInvitesBeyond` listed the three roles by hand, so a demoted admin's pending scorekeeper invite would have stayed live. Each fix was reverted on its own and each turned its test red. Template: 172 tests (4 new), lint and typecheck clean. Here, `tests/integration/scorekeeper.test.ts` (5 tests) ran red first on `Missing permission: org.update`. One of its sweeps calls every other league action as a scorekeeper and expects a refusal. The browser test failed once on the seed's weekday trap: on a Wednesday no game is owed a first score, so it now saves a correction. Gate: lint 0 errors (1 existing warning), typecheck clean, 453 tests in 59 files, `foundation:drift` clean against v1.3.0. `golden-path`, `public-league` and `demo` against the production build: 9 passed, 1 new.
+
+**Left behind.** Other clones owe v1.3.0 by 2026-10-21, each in its own session; that is template work, not this repo's. A scorekeeper can open the setup, rainout and standings pages and read them; only the forms are hidden, and the actions refuse. The scorekeeper is not told on the page that they cannot do more. Nothing new was added to `docs/DEMO.md` or the exec brief for the role.
+
 ## Browser coverage: the season page, the public playoffs and the changes list (2026-10-14)
 
 No backlog row; the owner chose the gaps `NEXT.md` listed as having no browser test. Nothing under `src/` changed.
