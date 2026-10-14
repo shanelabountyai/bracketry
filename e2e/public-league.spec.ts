@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import pg from 'pg';
 
@@ -40,7 +40,7 @@ async function seedLeague(status: 'published' | 'draft') {
   );
   await db.query('INSERT INTO "Placement" (id, "orgId", "seasonId", "scheduleVersionId", "gameId", "fieldSlotId") VALUES ($1, $2, $3, $4, $5, $6)', [randomUUID(), org, season, version, laterGame, laterSlot]);
   await db.query('INSERT INTO "GameResult" (id, "orgId", "gameId", "homeRuns", "awayRuns", "enteredBy") VALUES ($1, $2, $3, 7, 4, $4)', [randomUUID(), org, game, randomUUID()]);
-  return { slug, season };
+  return { slug, season, org, version };
 }
 
 test('anyone can read the published schedule, standings and score; no contact detail is on the page', async ({ page }) => {
@@ -99,4 +99,31 @@ test('a season with only a draft, an unknown season and a malformed id are all t
   for (const path of [`/l/${slug}/${season}`, `/l/${slug}/${season}/calendar.ics?team=Herons`, `/l/${slug}/${randomUUID()}`, `/l/${slug}/not-a-uuid`, `/l/nobody/${season}`]) {
     expect((await request.get(path)).status(), path).toBe(404);
   }
+});
+
+test('a preview link shows a draft to whoever holds it, and the season stays a 404 for everyone else (PUB-13)', async ({ page }) => {
+  const { slug, season, org, version } = await seedLeague('draft');
+  const token = randomBytes(32).toString('base64url');
+  await db.query(
+    `INSERT INTO "ShareLink" (id, "orgId", "resourceType", "resourceId", "tokenHash", "expiresAt") VALUES ($1, $2, 'scheduleVersion', $3, $4, now() + interval '1 day')`,
+    [randomUUID(), org, version, createHash('sha256').update(token).digest('hex')],
+  );
+  const base = `/l/${slug}/${season}/preview`;
+  const res = await page.goto(`${base}/${token}`);
+  expect(res!.status()).toBe(200);
+  await expect(page.getByText('Preview. This schedule has not been published and may change.')).toBeVisible();
+  await expect(page.getByText('18:00 · North Diamond · Herons v Otters (Open) · 7-4')).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+  await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'no-referrer');
+  expect(await page.content()).not.toMatch(/coach-|example\.test/);
+
+  await page.getByRole('link', { name: 'Otters' }).click(); // the team link stays inside the preview, and offers no feed
+  await expect(page.getByRole('heading', { name: 'Schedule: Otters' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Calendar feed/ })).toHaveCount(0);
+
+  for (const path of [`/l/${slug}/${season}`, `${base}/${randomBytes(32).toString('base64url')}`, `/l/nobody/${season}/preview/${token}`, `/s/${token}`]) {
+    expect((await page.request.get(path)).status(), path).toBe(404);
+  }
+  await db.query(`UPDATE "ShareLink" SET "revokedAt" = now() WHERE "resourceId" = $1`, [version]);
+  expect((await page.request.get(`${base}/${token}`)).status()).toBe(404);
 });

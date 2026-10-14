@@ -76,7 +76,7 @@ From three read-only reviews in the chairs of the PRD's personas (commissioner, 
 | 37 | ✅ L-036 | A team withdraws mid-season: its unplayed games are forfeits by that team and come off the schedule in a draft that moves no other game; played results stand; it leaves the ranked table (WD-01 to WD-05; D-52; spec 01 §10, spec 02 §10) | Commissioner | L | Opus | L-031, L-017 |
 | 38 | ✅ L-037 | Editor for points, the run-difference cap and forfeit settings (STAND-02; open from L-016) | Commissioner | M | Opus | L-016 |
 | 39 | ✅ L-038 | Copy a season's divisions, teams and fields into a new season | Commissioner | S | Sonnet | L-012 |
-| 40 | ⬜ L-039 | A private preview before a season is public. Reopens D-33: the owner decides first | Commissioner | M | Opus | L-019 |
+| 40 | ✅ L-039 | A private preview before a season is public: a secret, expiring, revocable link to one draft (PUB-13, D-53). D-33 stands | Commissioner | M | Opus | L-019 |
 | 41 | ⬜ L-040 | Scorekeeper role: enter and correct scores and nothing else. Blocked: needs a permission added in `saas-foundation` (D-30), not here | Scorekeeper, commissioner | M | Opus | template release |
 | 42 | ⬜ L-041 | Notices leave the outbox: one confirmed send with a mail key. Blocked while the project is not deployed (D-36) | Commissioner | S | Sonnet | deployment |
 | 43 | ✅ L-042 | The rainout tool sees placed playoff games: a reschedule or a regeneration no longer proposes a draft that publish refuses for a playoff clash (open note from L-034) | Commissioner | S | Opus | L-034, L-017 |

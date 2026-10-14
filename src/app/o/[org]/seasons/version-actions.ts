@@ -1,17 +1,21 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { z } from 'zod';
 import { audit } from '@/core/audit';
 import { orgAction, ref } from '@/core/authz/action';
 import { inOrg } from '@/core/authz/guards';
 import { now } from '@/core/clock';
 import { db } from '@/core/db';
+import { env } from '@/core/env';
 import { Refused } from '@/core/errors';
+import { revokeShareLink } from '@/core/share/links';
+import { hashToken, newToken } from '@/core/tokens';
 import { slotId } from '@/lib/league/build-input';
 import { scoreSchedule } from '@/lib/league/schedule';
 import { isPublishable, type Game, type ScoreReport, type Slot } from '@/lib/league/types';
 import { enqueue } from '@/modules/notifications/outbox';
+import { PREVIEW } from '@/app/l/public-league';
 import { isPlayoffKey, loadPlacedPlayoffs, playoffGame, playoffKey } from './bracket-load';
 import { loadSeasonInput } from './load-input';
 import { SCORED } from './rainout-load';
@@ -153,4 +157,29 @@ export const removePin = orgAction(PERM, z.object({ seasonId: ref('season'), gam
   });
   revalidatePath(seasonPage(ctx.slug, i.seasonId));
   return { notice: 'Pin removed.' };
+});
+
+// PUB-13, D-53: a secret link to one draft as the public page would show it. A row of the template's ShareLink
+// table, written here because `createShareLink` takes only the types registered in src/core: hashed at rest,
+// expiry required, revoked through the template's own `revokeShareLink` (INV-07, INV-08).
+export const previewLink = orgAction(PERM, z.object({ versionId: ref('scheduleVersion'), days: z.enum(['1', '7', '30']) }), async (ctx, i) => {
+  const v = (await db.scheduleVersion.findFirst({ where: { id: i.versionId, ...inOrg(ctx) }, select: { id: true, number: true, status: true, seasonId: true } })) ?? notFound();
+  if (v.status !== 'draft') throw new Refused(`Version ${v.number} is ${v.status}; only a draft has a preview.`);
+  const token = newToken();
+  await db.$transaction(async (tx) => {
+    const link = await tx.shareLink.create({
+      data: { ...inOrg(ctx), resourceType: PREVIEW, resourceId: v.id, tokenHash: hashToken(token), createdById: ctx.userId, expiresAt: new Date(now().getTime() + Number(i.days) * 86_400_000) },
+    });
+    await audit(ctx, 'share.created', { targetType: 'shareLink', targetId: link.id, data: { resourceType: PREVIEW, resourceId: v.id, days: Number(i.days) } }, tx);
+  });
+  revalidatePath(seasonPage(ctx.slug, v.seasonId));
+  return { notice: `${env.APP_URL}/l/${ctx.slug}/${v.seasonId}/preview/${token}` }; // the raw token exists only in this response
+});
+
+export const revokePreview = orgAction(PERM, z.object({ id: ref('shareLink') }), async (ctx, i) => {
+  // Only a preview link, and the season to go back to is read from it, never taken from the form.
+  const link = (await db.shareLink.findFirst({ where: { id: i.id, resourceType: PREVIEW, ...inOrg(ctx) }, select: { resourceId: true } })) ?? notFound();
+  const v = (await db.scheduleVersion.findFirst({ where: { id: link.resourceId, ...inOrg(ctx) }, select: { seasonId: true } })) ?? notFound();
+  await revokeShareLink(ctx, i.id);
+  redirect(seasonPage(ctx.slug, v.seasonId));
 });

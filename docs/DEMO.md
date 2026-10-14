@@ -95,6 +95,7 @@ Sign in at `http://localhost:5100/demo`, then Eastside Rec Softball → Seasons 
 - **A champion cannot be crowned live.** A playoff game is scored on or after its day and is only ever placed after today. Part 1 shows the champion; the end-to-end test gets there by moving the slot's date in the test database.
 - **Notices are queued, not sent.** No mail key is set on the laptop, so the per-team notices sit in the outbox.
 - **Commissioners enter the scores.** A scorekeeper role needs a change to the shared starter (D-30). Coaches have no accounts at all.
+- **A draft can be shown before it is public, by a secret link** (D-53): on the season page, "Create preview link" beside a draft version. Anyone with the link can read it until it expires or is revoked, so it is as private as the inbox it was sent to.
 - **A published season is public, with no opt-out** (D-33), and public reads share one rate limit of 60 per 15 minutes per address.
 - **Generate after the first score ignores played games.** "Regenerate the rest" is the action that keeps them; publish refuses a draft that would move a scored game.
 - **Not built:** umpires, rosters, registration, payments, live scoring, double elimination, an editor for points and forfeit settings.

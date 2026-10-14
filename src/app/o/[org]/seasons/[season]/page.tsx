@@ -14,7 +14,9 @@ import { withdrawTeam } from '../withdraw-actions';
 import { loadRainout, timeIn } from '../rainout-load';
 import { recordResult, voidResult } from '../result-actions';
 import { resultsOrder } from '../results-order';
-import { publish, removePin, setPin } from '../version-actions';
+import { PREVIEW } from '@/app/l/public-league';
+import { now } from '@/core/clock';
+import { previewLink, publish, removePin, setPin, revokePreview } from '../version-actions';
 import { addBlackout, addDivision, addField, addHoliday, addSlot, addSlotPattern, addTeam, editTeam, saveRules, setCrossover, setSlotOpen } from '../actions';
 
 export const metadata = { title: 'Season setup' };
@@ -46,6 +48,7 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
     db.user.findMany({ where: { id: { in: [...new Set(versions.map((v) => v.createdBy))] } }, select: { id: true, name: true, email: true } }),
   ]);
   const published = versions.find((v) => v.status === 'published');
+  const previews = await db.shareLink.findMany({ where: { ...inOrg(ctx), resourceType: PREVIEW, resourceId: { in: versions.filter((v) => v.status === 'draft').map((v) => v.id) }, revokedAt: null, expiresAt: { gt: now() } }, orderBy: { createdAt: 'asc' } });
   const [scored, results] = await Promise.all([
     published ? db.placement.findMany({ where: { scheduleVersionId: published.id, ...inOrg(ctx) }, select: { gameId: true, fieldSlotId: true } }) : [],
     db.gameResult.findMany({ where: { game: { seasonId: season.id }, ...inOrg(ctx) }, orderBy: { enteredAt: 'asc' } }),
@@ -302,12 +305,35 @@ export default async function SeasonSetup({ params, searchParams }: { params: Pr
                       <button type="submit" disabled={!isPublishable(r)}>Publish</button>
                     </ActionForm>
                   )}
+                  {edit && v.status === 'draft' && (
+                    <ActionForm action={bind(previewLink)}>
+                      <input type="hidden" name="versionId" value={v.id} />
+                      <label>Preview link, good for <select name="days" defaultValue="7"><option value="1">1 day</option><option value="7">7 days</option><option value="30">30 days</option></select></label>
+                      <button type="submit">Create preview link</button>
+                    </ActionForm>
+                  )}
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      <p>A preview link shows one draft the way the public page would, to anyone who has the link and with no account. The address is shown once, when it is made. It stops working when it expires, when it is revoked, and when the draft is published.</p>
+      {previews.length > 0 && (
+        <ul aria-label="Preview links">
+          {previews.map((l) => (
+            <li key={l.id}>
+              Version {versions.find((v) => v.id === l.resourceId)?.number}: expires {timeIn(season.timezone, l.expiresAt)}
+              {edit && (
+                <ActionForm action={bind(revokePreview)}>
+                  <input type="hidden" name="id" value={l.id} />
+                  <button type="submit">Revoke</button>
+                </ActionForm>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       {versions.length > 1 && (
         <form method="get">
           <label>Compare <select name="a" defaultValue={sp.a}>{versions.map((v) => <option key={v.id} value={v.number}>Version {v.number}</option>)}</select></label>

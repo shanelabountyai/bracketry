@@ -4,8 +4,10 @@ import { db } from '@/core/db';
 import { generateBracket, placeBracketGames } from '@/app/o/[org]/seasons/bracket-actions';
 import { generate } from '@/app/o/[org]/seasons/generate-actions';
 import { closeDay } from '@/app/o/[org]/seasons/rainout-actions';
-import { publish } from '@/app/o/[org]/seasons/version-actions';
-import { blankPublicFairness, blankPublicGame, blankPublicMatch, blankPublicStanding, loadPublicLeague, MOVED_MARK_MS, roundName, teamCalendar, toPublicFairness, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
+import { previewLink, publish, revokePreview } from '@/app/o/[org]/seasons/version-actions';
+import { blankPublicFairness, blankPublicGame, blankPublicMatch, blankPublicStanding, loadPreviewLeague, loadPublicLeague, MOVED_MARK_MS, roundName, teamCalendar, toPublicFairness, toPublicGame, toPublicMatch, toPublicStanding } from '@/app/l/public-league';
+import { readShare } from '@/core/share/links';
+import { hashToken } from '@/core/tokens';
 import { shortDay } from '@/lib/league/days';
 import { resetAuthTables, signInAs } from '../helpers/auth';
 import { addMember, makeOrg } from '../helpers/org';
@@ -248,3 +250,64 @@ describe('teamCalendar (ICAL-01)', () => {
   });
 });
 
+
+// L-039 (PUB-13, D-53): a draft read through a secret link, before anything is public.
+describe('loadPreviewLeague', () => {
+  const draft = () => db.scheduleVersion.findFirstOrThrow({ where: { status: 'draft' } });
+  const link = async (days: '1' | '7' | '30' = '7') => {
+    const out = (await previewLink(SLUG, { versionId: (await draft()).id, days })) as { notice: string };
+    return out.notice.split('/preview/')[1]!;
+  };
+
+  it('shows the draft to the token and to nothing else, and the season is still not public', async () => {
+    const token = await link();
+    const league = (await loadPreviewLeague(SLUG, seasonId, token))!;
+    expect(league.games).toHaveLength(6);
+    expect(JSON.stringify(league)).not.toMatch(SECRET);
+    expect(await loadPublicLeague(SLUG, seasonId)).toBeNull();
+    const stored = await db.shareLink.findFirstOrThrow();
+    expect(stored.tokenHash).not.toContain(token); // INV-07: only the hash is kept
+    expect(await db.auditEvent.count({ where: { action: 'share.created', targetId: stored.id } })).toBe(1);
+
+    await makeOrg('other');
+    expect(await loadPreviewLeague(SLUG, seasonId, 'x'.repeat(43))).toBeNull();
+    expect(await loadPreviewLeague('other', seasonId, token)).toBeNull();
+    expect(await loadPreviewLeague(SLUG, crypto.randomUUID(), token)).toBeNull();
+    expect(await readShare(token, '203.0.113.9')).toBeNull(); // not one of the template's share types: /s/<token> is a 404
+  });
+
+  it('dies when it expires, when it is revoked and when the draft is published', async () => {
+    const [short, revoked, live] = [await link('1'), await link(), await link()];
+    advanceClock(86_400_000 + 1000);
+    expect(await loadPreviewLeague(SLUG, seasonId, short)).toBeNull();
+    expect(await loadPreviewLeague(SLUG, seasonId, live)).not.toBeNull();
+
+    await signInAs(ownerId, { mfa: true });
+    await revokePreview(SLUG, { id: (await db.shareLink.findUniqueOrThrow({ where: { tokenHash: hashToken(revoked) } })).id }).catch(() => {}); // redirects
+    expect(await loadPreviewLeague(SLUG, seasonId, revoked)).toBeNull();
+    expect(await loadPreviewLeague(SLUG, seasonId, live)).not.toBeNull();
+
+    await publishFirst();
+    expect(await loadPreviewLeague(SLUG, seasonId, live)).toBeNull();
+    expect(await previewLink(SLUG, { versionId: (await db.scheduleVersion.findFirstOrThrow()).id, days: '7' })).toMatchObject({ error: expect.stringMatching(/only a draft has a preview/) });
+  });
+
+  it('marks what publishing the draft would move, against the published version', async () => {
+    await publishFirst();
+    const v1 = await db.scheduleVersion.findFirstOrThrow({ include: { placements: true } });
+    const free = await db.fieldSlot.findFirstOrThrow({ where: { placements: { none: {} } }, orderBy: [{ day: 'desc' }, { start: 'desc' }] });
+    const v2 = await db.scheduleVersion.create({ data: { orgId, seasonId, number: 2, seed: 1n, inputHash: 'x', fingerprint: 'y', report: v1.report as object, iterations: 0, accepted: 0, createdBy: ownerId } });
+    await db.placement.createMany({ data: v1.placements.map((p, n) => ({ orgId, seasonId, scheduleVersionId: v2.id, gameId: p.gameId, fieldSlotId: n === 0 ? free.id : p.fieldSlotId })) });
+    const league = (await loadPreviewLeague(SLUG, seasonId, await link()))!;
+    expect(league.games.filter((g) => g.movedFrom)).toMatchObject([{ day: free.day, start: free.start }]);
+    expect((await load()).games.some((g) => g.movedFrom)).toBe(false); // the public page still shows version 1
+  });
+
+  it('is refused to a member, who cannot publish either', async () => {
+    const member = await addMember(orgId, 'member', 'm@example.test');
+    await signInAs(member.id, { mfa: true });
+    const id = (await draft()).id;
+    await expect(previewLink(SLUG, { versionId: id, days: '7' })).rejects.toThrow();
+    expect(await db.shareLink.count()).toBe(0);
+  });
+});

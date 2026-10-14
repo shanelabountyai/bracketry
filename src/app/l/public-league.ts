@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { now } from '@/core/clock';
 import { db } from '@/core/db';
+import { hashToken } from '@/core/tokens';
 import { champion } from '@/lib/league/bracket';
 import { shortDay } from '@/lib/league/days';
 import type { TeamQuality } from '@/lib/league/quality';
@@ -152,13 +153,38 @@ export const MOVED_MARK_MS = 7 * 86_400_000;
  * touched are the published one and, for the "moved from" mark, the one it replaced.
  */
 export async function loadPublicLeague(orgSlug: string, seasonId: string): Promise<PublicLeague | null> {
-  const version = await db.scheduleVersion.findFirst({ where: { seasonId, status: 'published', org: { slug: orgSlug } }, select: { id: true, orgId: true, number: true, publishedAt: true } });
+  const version = await db.scheduleVersion.findFirst({ where: { seasonId, status: 'published', org: { slug: orgSlug } }, select: VERSION });
   if (!version) return null;
-  const org = { orgId: version.orgId };
   const marked = version.publishedAt !== null && now().getTime() - version.publishedAt.getTime() < MOVED_MARK_MS;
   const prev = marked
-    ? await db.scheduleVersion.findFirst({ where: { seasonId, status: 'superseded', publishedAt: { not: null }, ...org }, orderBy: { publishedAt: 'desc' }, select: { id: true } })
+    ? await db.scheduleVersion.findFirst({ where: { seasonId, status: 'superseded', publishedAt: { not: null }, orgId: version.orgId }, orderBy: { publishedAt: 'desc' }, select: { id: true } })
     : null;
+  return leagueOf(version, prev);
+}
+
+/** The `ShareLink.resourceType` of a preview link. Not in the template's `shareable`, so `/s/<token>` is a 404 for one. */
+export const PREVIEW = 'scheduleVersion';
+
+/**
+ * Anonymous read of one draft, by a preview link's token (PUB-13, D-53). The link is a template `ShareLink`
+ * row, so it is stored as a hash, expires and can be revoked (INV-07, INV-08). The org and season in the
+ * URL must be the link's own. A draft that is published or superseded, like every other miss, is null.
+ * "Moved from" compares against the published version: what publishing this draft would change.
+ */
+export async function loadPreviewLeague(orgSlug: string, seasonId: string, token: string): Promise<PublicLeague | null> {
+  const link = await db.shareLink.findFirst({ where: { tokenHash: hashToken(token), resourceType: PREVIEW, revokedAt: null, expiresAt: { gt: now() } }, select: { orgId: true, resourceId: true } });
+  if (!link) return null;
+  const version = await db.scheduleVersion.findFirst({ where: { id: link.resourceId, orgId: link.orgId, seasonId, status: 'draft', org: { slug: orgSlug } }, select: VERSION });
+  if (!version) return null;
+  return leagueOf(version, await db.scheduleVersion.findFirst({ where: { seasonId, status: 'published', orgId: version.orgId }, select: { id: true } }));
+}
+
+const VERSION = { id: true, orgId: true, seasonId: true, number: true, publishedAt: true } as const;
+
+/** One version as the public page shows it. `prev` is the version whose slots a moved game is marked against. */
+async function leagueOf(version: { id: string; orgId: string; seasonId: string; number: number; publishedAt: Date | null }, prev: { id: string } | null): Promise<PublicLeague | null> {
+  const { seasonId } = version;
+  const org = { orgId: version.orgId };
   const slot = { select: { day: true, start: true, status: true, field: { select: { name: true } } } };
   const named = { select: { name: true } };
   const side = { select: { name: true, divisionId: true } };
