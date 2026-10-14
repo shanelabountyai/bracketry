@@ -1,3 +1,7 @@
+## Owner review of the Ledger drafts (2026-10-14)
+
+No backlog row and no code. Ledger posts 114 to 116 were checked against this file and `WRITEUP.md`; every number matched. Two changes, chosen by the owner: 115's opening line said three teams had finished level with no rule to split them, which happened only in fixtures (the demo's three-way tie is split by run differential and head-to-head), so it now describes what the software does; 116 dropped the Lumen line that 115 also carries. The Ledger page gained a `bracketry` project entry. Not checked: the Lumen 25% figure in 114.
+
 ## Withdrawal refusal in a browser (2026-10-13)
 
 No backlog row; the owner chose this gap from the ones `NEXT.md` listed. Nothing under `src/` changed.
