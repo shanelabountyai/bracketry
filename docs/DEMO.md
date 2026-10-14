@@ -1,6 +1,6 @@
 # Bracketry demo script
 
-About ten minutes. Two parts: the engine on its own in a terminal, then the same story in the app as a commissioner. Every command here was run on 2026-10-12; the numbers quoted are from those runs.
+About ten minutes, plus an optional third part. The engine on its own in a terminal, then the same story in the app as a commissioner, then single stops for the features Part 2 walks past. Every command here was run on 2026-10-12; the numbers quoted are from those runs.
 
 The seeded season is dated around the day you run the seed, because a score is only accepted for a past day and a rainout only moves future games. **Seed on the day of the demo.** Dates below are written as the seed prints them.
 
@@ -74,6 +74,20 @@ Sign in at `http://localhost:5100/demo`, then Eastside Rec Softball → Seasons 
 | 10 | Versions | On the draft, type a reason (`Rain on <day>`), click **Publish**. | "Version 1 is kept as superseded. One notice is queued per team whose game moved. The database itself refuses a second published version." |
 | 11 | Public page | Open **Public page** in a private window. | "No account. Schedule, standings with reasons, bracket. The moved games say where they moved from. No coach email is on this page; a test checks that." |
 
+## Part 3: if there is time
+
+Each stop stands alone, as the commissioner, on the same seeded season. None of them is needed for Part 2; do them after it, or the numbers quoted there change. Stops 12, 15, 16, 17 and 18 are the steps of the second test in `e2e/golden-path.spec.ts` and stops 13 and 14 are in `e2e/public-league.spec.ts`; both were run on 2026-10-13.
+
+| # | Screen | Do | Say |
+|---|---|---|---|
+| 12 | Standings → What if | Set **Teams that qualify** to 2, type a score for one open game, click **Show what-if table**. | "Nothing typed here is stored; it is in the address bar. Clinched and eliminated are on points only, by trying every outcome, and only shown when 12 or fewer games are left in a division." |
+| 13 | Public page → Games by time and field | Scroll to the table. | "A coach asks why they are always late on the far field. This is each team's count per start time and per field, from the same scoring function the generator uses." |
+| 14 | Public page, phone width | Narrow the window and add `?team=Aces` to the address. | "A parent's link. It opens on their team with the next game first, days as words, and nothing scrolls sideways." |
+| 15 | Season page → Results | On a scored game, type a reason under **Entered on the wrong game?** and click **Void this score**. Then enter it again: the form will not send until the line naming the game is ticked. | "A void is a new row. The game has no score again and the history keeps the voided one. Nothing is deleted." |
+| 16 | Season page → Divisions and teams | Open **Withdraw** on a team that does not play today, give a reason, tick the line, click **Withdraw team**. | "Its unplayed games are forfeits and come off the schedule in a draft that moves no other game. What it already played stands. It is listed under the table with its record, not ranked." |
+| 17 | Standings → Points and runs | Change **Points for a win** to 3, give a reason, click **Save points and runs**. | "Games have scores, so it asks why and logs it. The table is worked out again from every score; nothing was stored to go stale." |
+| 18 | Seasons → Copy a season | Name it, give a first and last day, click **Copy season**. On the new season set **Crossover rounds** to 1. | "Divisions, teams and weekly slots come along; blackouts, scores and schedules do not. One crossover round is six games: each B Division team plays one A Division team, and the game counts in each team's own table." |
+
 ## Troubleshooting
 
 | What you see | Cause | Fix |
@@ -82,6 +96,7 @@ Sign in at `http://localhost:5100/demo`, then Eastside Rec Softball → Seasons 
 | No `commissioner@eastside.demo.test` button on `/demo` | The seed has not run against this database | `npm run seed:bracketry` |
 | The seed prints `No three A Division teams ... Change SEED` | On this weekday no trio that has all met can be left level on its own | Change `SEED` in `scripts/seed-bracketry.ts`, or seed a day later |
 | Every game already has a score, or **Propose reschedule** is greyed out | The seed is days old, or the closed day had no unplayed games | Run the seed again; close the day it prints |
+| **Withdraw team** refuses with "has games on or before today with no score" | The team plays today and tonight's scores are not in | Pick a team that does not play today, or enter today's scores first |
 | `Placed 0 of 2 games` on Playoffs | No free slot after today | Add makeup slots first (step 6) |
 | `npm run dev` exits at once, or the port is taken | Another server holds 5100, or the memory check refused | `lsof -ti :5100`; stop other projects' dev servers |
 | `CLAUDE.md` shows as modified after `npm run dev` | Next's dev server appends an agent-rules block | `git checkout CLAUDE.md` |
@@ -93,9 +108,11 @@ Sign in at `http://localhost:5100/demo`, then Eastside Rec Softball → Seasons 
 - **The data is synthetic and the app is not deployed.** Eastside Rec Softball does not exist. Scores come from a seeded random generator with the tie forced.
 - **The tie is not always at the top of the table.** Mid-season, teams have played different numbers of games, so the seed takes the first trio it can leave level on its own. On 2026-10-12 it was ranks 3 to 5.
 - **A champion cannot be crowned live.** A playoff game is scored on or after its day and is only ever placed after today. Part 1 shows the champion; the end-to-end test gets there by moving the slot's date in the test database.
+- **A withdrawal cannot be undone in the app**, and a team that withdraws after a bracket is seeded stays in the bracket; its playoff games are forfeited by hand.
+- **Clinched and eliminated ignore tiebreakers** (D-38). A team that gets in only on a tiebreaker is not marked.
 - **Notices are queued, not sent.** No mail key is set on the laptop, so the per-team notices sit in the outbox.
 - **Commissioners enter the scores.** A scorekeeper role needs a change to the shared starter (D-30). Coaches have no accounts at all.
 - **A draft can be shown before it is public, by a secret link** (D-53): on the season page, "Create preview link" beside a draft version. Anyone with the link can read it until it expires or is revoked, so it is as private as the inbox it was sent to.
 - **A published season is public, with no opt-out** (D-33), and public reads share one rate limit of 60 per 15 minutes per address.
 - **Generate after the first score ignores played games.** "Regenerate the rest" is the action that keeps them; publish refuses a draft that would move a scored game.
-- **Not built:** umpires, rosters, registration, payments, live scoring, double elimination, an editor for points and forfeit settings.
+- **Not built:** umpires, rosters, registration, payments, live scoring, double elimination.

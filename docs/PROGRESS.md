@@ -1,3 +1,15 @@
+## Coverage and documents pass (2026-10-13)
+
+No backlog row; the owner chose it when nothing else was buildable. No behaviour changed and nothing under `src/` was touched.
+
+**Built.** A second test in `e2e/golden-path.spec.ts` that submits the forms no browser test had: edit a team (L-030), create and revoke a preview link (L-039), void a score and the confirm line (L-031), withdraw a team (L-036), points (L-037), copy a season (L-038) and crossover rounds on the copy (L-026). The seed now runs before each test in that file, so the two start from the same league. `docs/DEMO.md` gained Part 3 (stops 12 to 18), one troubleshooting row and two concessions, and lost a stale "not built" entry for the points editor. The exec brief is at version 3.
+
+**Decided.** Nothing. The test went in the golden-path file rather than a new one because both replace the Eastside league and files can run on separate workers.
+
+**Measured.** Gate: lint 0 errors, typecheck clean, 444 tests in 57 files, `foundation:drift` clean against v1.2.1. `golden-path` and `public-league` together: 7 passed in 13.4 s against the production build. Two runs failed first, both on the test's own locators (the confirm box found by label text; a team name that is on the page twice), not on the app.
+
+**Left behind.** The withdrawal step picks a team that does not play today, so the refusal for a team with an unscored game today is still only in the integration test. The confirm line is asserted as the browser's `valueMissing`, not as a message a person reads. The preview is read as a response, not opened as a page (that is in `public-league.spec.ts`). Crossover rounds are set and counted on the copy; no crossover season is generated in a browser. The brief names the new features in three table rows and one paragraph; its two screenshots are still the ones from 2026-10-12.
+
 ## L-039: a private preview of a draft (2026-10-13)
 
 **Built.** PUB-13. `previewLink` and `revokePreview` in `seasons/version-actions.ts`, a form beside each draft on the season page and a list of live links with their expiry. The link is a row of the template's `ShareLink` table with `resourceType` `scheduleVersion`: no migration, no new table, and the hash at rest, the required expiry and the revoke are the template's. `loadPreviewLeague` in `src/app/l/public-league.ts` resolves a token to a draft; `loadPublicLeague` and it now share one `leagueOf(version, prev)`, so a preview goes through the same allowlist projections as the public page. The page's markup moved unchanged to `src/app/l/league-view.tsx`, used by the public route and by the new `/l/<org>/<season>/preview/<token>`. Nothing in `src/core` or `src/lib/league/` changed.
@@ -7,6 +19,7 @@
 **Measured.** The invariant harness (INV-03, INV-04) failed the first version of `revokePreview`: it took a `seasonId` from the form for its redirect and never checked it against the org, and it would have revoked a project share link as well. It now reads the season from the link and takes only preview links. Gate: lint 0 errors, typecheck clean, 444 tests in 57 files (4 new, in `tests/integration/public-league.test.ts`), `foundation:drift` clean against v1.2.1. `e2e/public-league.spec.ts`, `share.spec.ts` and `headers.spec.ts` against the production build: 10 passed, 1 new.
 
 **Left behind.** No browser test creates or revokes a link through the form; the browser test inserts the row, and the markup of the form and list was not looked at in a browser. A draft that is never published stays a draft, so its link lives until it expires or is revoked. A holder of a dead link gets a 404, not a pointer to the public page. The `no-referrer` and `noindex` are meta tags, not response headers, because `next.config.ts` covers `/s/` only; the response's `Cache-Control` was not read. The token is in the path, so it is in server logs and browser history. Reads share the public page's 60 per 15 minutes per address. The harness's `shareLink` fixture is now a preview link, so the template's `revokeShare` action is driven with that, not with a project link. `docs/DEMO.md` has one line on it; the exec brief has none.
+
 
 ## L-036: a team withdraws (2026-10-13)
 

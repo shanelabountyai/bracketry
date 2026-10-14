@@ -11,8 +11,8 @@ const db = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
 test.afterAll(() => db.end());
 
 let league: Awaited<ReturnType<typeof seedBracketry>>;
-test.beforeAll(() => {
-  // The same command the demo uses, against the database test:e2e points at.
+test.beforeEach(() => {
+  // The same command the demo uses, against the database test:e2e points at. It replaces the league, so each test starts from the seed.
   league = JSON.parse(execFileSync('npx', ['tsx', 'scripts/seed-bracketry.ts', '--json'], { encoding: 'utf8' }));
 });
 
@@ -115,4 +115,103 @@ test('standings through a three-way tie, a bracket and a champion, then a rainou
   await expect(page.getByRole('row').filter({ hasText: `Rain on ${league.rainDay}` })).toContainText('published');
   await expect(page.getByRole('row').filter({ hasText: 'Opening day schedule' })).toContainText('superseded');
   await expect(page.getByRole('heading', { name: 'Displaced games (0)' })).toBeVisible();
+});
+
+// The forms no other spec submits: edit a team (L-030), a preview link made and revoked (L-039), a void and the
+// confirm line (L-031), a withdrawal (L-036), points (L-037), copy a season (L-038) and crossover rounds (L-026). What is asserted is what the page shows afterwards.
+test('edit a team, preview and revoke a draft, void and re-enter a score, withdraw a team, change the points, copy the season', async ({ page }) => {
+  test.setTimeout(120_000);
+  const base = `/o/${league.slug}/seasons/${league.seasonId}`;
+  await page.goto('/demo');
+  await page.getByRole('button', { name: league.email }).click();
+  await expect(page.getByRole('heading', { name: 'Your orgs' })).toBeVisible();
+  await page.goto(base);
+
+  // Edit a team: a new name, and the contact email taken away, which the list flags at once (SEASON-08).
+  const owls = page.locator('section', { has: page.getByRole('heading', { name: /^B Division/ }) }).getByRole('listitem').filter({ hasText: 'Owls' });
+  await owls.getByText('Edit', { exact: true }).click();
+  await owls.getByLabel('Team').fill('Owls United');
+  await owls.getByLabel('Contact email (internal)').fill('');
+  await owls.getByRole('button', { name: 'Save team' }).click();
+  await expect(owls).toContainText('Owls United · no contact email');
+
+  // A draft to preview: the only kind this season can still make, since games have scores.
+  await page.getByLabel(/I understand up to \d+ games may move/).check();
+  await page.getByRole('button', { name: 'Regenerate the rest' }).click();
+  await expect(page.getByText(/Draft version 2 keeps the \d+ played games/)).toBeVisible();
+  const draft = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Create preview link' }) });
+  await draft.getByRole('button', { name: 'Create preview link' }).click();
+  await expect(draft.getByRole('status')).toContainText('/preview/');
+  const preview = new URL(await draft.getByRole('status').innerText()).pathname;
+  const shown = await page.request.get(preview);
+  expect(shown.status()).toBe(200);
+  expect(await shown.text()).toContain('This schedule has not been published');
+  const links = page.getByRole('list', { name: 'Preview links' });
+  await expect(links).toContainText('Version 2: expires');
+  await links.getByRole('button', { name: 'Revoke' }).click();
+  await expect(links).toHaveCount(0);
+  expect((await page.request.get(preview)).status()).toBe(404);
+
+  // Void a score (D-45): the game has no score again and the history keeps the voided one.
+  const gameId = await page.locator('form', { has: page.getByRole('button', { name: 'Void this score' }) }).first().locator('input[name="gameId"]').inputValue();
+  const game = page.locator('li', { has: page.locator(`input[name="gameId"][value="${gameId}"]`) });
+  await game.getByLabel('Entered on the wrong game? Reason').fill('Entered on the wrong game');
+  await game.getByRole('button', { name: 'Void this score' }).click();
+  await expect(game.getByRole('button', { name: 'Void this score' })).toHaveCount(0);
+  await expect(game).toContainText('· no score');
+  await expect(game).toContainText('Voided');
+
+  // The confirm line (SCORE-13): without the tick the browser sends nothing; with it the score is saved.
+  await game.getByRole('spinbutton').nth(0).fill('9');
+  await game.getByRole('spinbutton').nth(1).fill('1');
+  await game.getByRole('button', { name: 'Save score' }).click();
+  expect(await game.getByRole('checkbox').evaluate((box: HTMLInputElement) => box.validity.valueMissing)).toBe(true);
+  await expect(game).toContainText('· no score');
+  await game.getByRole('checkbox').check();
+  await game.getByRole('button', { name: 'Save score' }).click();
+  await expect(game).toContainText('9–1');
+
+  // A team withdraws (WD-01 to WD-03). One that plays tonight would be refused until tonight has scores, so take one that does not.
+  const tonight = (await page.locator('li', { has: page.getByRole('button', { name: 'Save score' }) }).allInnerTexts()).join(' ');
+  const leaving = ['Jets', 'Kings', 'Lions', 'Mustangs', 'Nomads', 'Aces', 'Bandits', 'Dukes', 'Eagles'].find((t) => !tonight.includes(t))!;
+  const team = page.locator('section', { has: page.getByRole('heading', { name: / Division \(/ }) }).getByRole('listitem').filter({ hasText: leaving });
+  await team.getByText('Withdraw', { exact: true }).click();
+  await team.getByLabel('Reason').fill('Not enough players');
+  await team.getByLabel(`Withdraw ${leaving} and forfeit its unplayed games`).check();
+  await team.getByRole('button', { name: 'Withdraw team' }).click();
+  await expect(team).toContainText(/withdrew \d{4}-\d\d-\d\d/);
+  await expect(page.getByText(new RegExp(`Version 1 without the \\d+ unplayed games of ${leaving}, which withdrew\\. No game was placed or moved\\.`))).toBeVisible();
+
+  // Points (STAND-02): scores exist, so a reason is asked for, and the table is worked out again from them.
+  await page.goto(`${base}/standings`);
+  const scoring = page.locator('form', { has: page.getByRole('button', { name: 'Save points and runs' }) });
+  await scoring.getByLabel('Points for a win').fill('3');
+  await scoring.getByLabel('Reason').fill('Board vote');
+  await scoring.getByRole('button', { name: 'Save points and runs' }).click();
+  await expect(scoring.getByRole('status')).toContainText('Points and run settings saved.');
+  await page.reload();
+  await expect(page.getByLabel('Points for a win')).toHaveValue('3');
+  const [tie, loss] = [Number(await page.getByLabel('Points for a tie').inputValue()), Number(await page.getByLabel('Points for a loss').inputValue())];
+  const top = (await page.getByRole('row').nth(1).getByRole('cell').allInnerTexts()).map(Number); // Rank, Team, P, W, L, T, Pts
+  expect(top[6]).toBe(3 * top[3]! + loss * top[4]! + tie * top[5]!);
+
+  // Copy the season (D-49): divisions, teams as they are now, and weekly slots come along; nothing dated does.
+  await page.goto(`/o/${league.slug}/seasons`);
+  const copy = page.locator('form', { has: page.getByRole('button', { name: 'Copy season' }) });
+  await copy.getByLabel('Name').fill('Softball next');
+  await copy.getByLabel('First day').fill('2027-04-06');
+  await copy.getByLabel('Last day').fill('2027-05-27');
+  await copy.getByRole('button', { name: 'Copy season' }).click();
+  await expect(page.getByRole('heading', { name: 'Softball next' })).toBeVisible();
+  await expect(page.getByText('2027-04-06 to 2027-05-27')).toBeVisible();
+  await expect(owls).toContainText('Owls United · no contact email');
+  await expect(page.getByText('Tuesday 18:00 · North Diamond')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Slots \([1-9]\d*\)$/ })).toBeVisible();
+  await expect(page.getByText(/\d{4}-\d\d-\d\d · Comets/)).toHaveCount(0); // the source's blackout
+  await expect(page.getByText('Scores are entered against the published version. Publish one first.')).toBeVisible();
+
+  // Crossover rounds (DBL-01), on the copy, where nothing is scheduled yet: six B Division teams, so six games a round.
+  await page.getByLabel('Crossover rounds').fill('1');
+  await page.getByRole('button', { name: 'Save crossover rounds' }).click();
+  await expect(page.getByText('This season has 6 crossover games.')).toBeVisible();
 });
