@@ -138,7 +138,7 @@ test('edit a team, preview and revoke a draft, void and re-enter a score, withdr
   // A draft to preview: the only kind this season can still make, since games have scores.
   await page.getByLabel(/I understand up to \d+ games may move/).check();
   await page.getByRole('button', { name: 'Regenerate the rest' }).click();
-  await expect(page.getByText(/Draft version 2 keeps the \d+ played games/)).toBeVisible();
+  await expect(page.getByText(/Draft version 2 keeps the \d+ played games/)).toBeVisible({ timeout: 30_000 }); // the generator has timed 6.1 s locally (L-025)
   const draft = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Create preview link' }) });
   await draft.getByRole('button', { name: 'Create preview link' }).click();
   await expect(draft.getByRole('status')).toContainText('/preview/');
@@ -173,6 +173,15 @@ test('edit a team, preview and revoke a draft, void and re-enter a score, withdr
 
   // A team withdraws (WD-01 to WD-03). One that plays tonight would be refused until tonight has scores, so take one that does not.
   const tonight = (await page.locator('li', { has: page.getByRole('button', { name: 'Save score' }) }).allInnerTexts()).join(' ');
+  // D-52 (2): a team with an unscored game on or before today is refused, and nothing changes.
+  const owing = (await page.locator('li', { has: page.getByRole('button', { name: 'Save score' }) }).filter({ hasText: '· no score' }).first().innerText()).split(' v ')[0]!.trim();
+  const busy = page.locator('section', { has: page.getByRole('heading', { name: / Division \(/ }) }).getByRole('listitem').filter({ hasText: owing });
+  await busy.getByText('Withdraw', { exact: true }).click();
+  await busy.getByLabel('Reason').fill('Not enough players');
+  await busy.getByLabel(`Withdraw ${owing} and forfeit its unplayed games`).check();
+  await busy.getByRole('button', { name: 'Withdraw team' }).click();
+  await expect(busy.getByRole('alert')).toContainText(`${owing} has games on or before today with no score`);
+  await expect(busy).not.toContainText(/withdrew \d{4}-\d\d-\d\d/);
   const leaving = ['Jets', 'Kings', 'Lions', 'Mustangs', 'Nomads', 'Aces', 'Bandits', 'Dukes', 'Eagles'].find((t) => !tonight.includes(t))!;
   const team = page.locator('section', { has: page.getByRole('heading', { name: / Division \(/ }) }).getByRole('listitem').filter({ hasText: leaving });
   await team.getByText('Withdraw', { exact: true }).click();

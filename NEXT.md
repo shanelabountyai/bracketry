@@ -48,4 +48,4 @@ Open from L-033: D-51's defaults (a postponed game is not a team's next game; a 
 
 Open from L-042: D-50 was taken as a default (a rainout draft's stored report counts season games only; a regeneration's "before" cost includes placed playoff games); confirmed by the owner (D-54). `placeBracketGames` keeps its own list of fixed playoff games. Only the one-game-a-day clash was tried, with one bracket.
 
-Open from the coverage pass (2026-10-13): the withdrawal refusal for a team with an unscored game today is not driven in a browser. The brief's screenshots are from 2026-10-12. `docs/DEMO.md` Part 3 was run as browser tests, not rehearsed aloud.
+Open from the coverage pass (2026-10-13): the brief's screenshots are from 2026-10-12. `docs/DEMO.md` Part 3 was run as browser tests, not rehearsed aloud.

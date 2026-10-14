@@ -1,3 +1,15 @@
+## Withdrawal refusal in a browser (2026-10-13)
+
+No backlog row; the owner chose this gap from the ones `NEXT.md` listed. Nothing under `src/` changed.
+
+**Built.** The second golden-path test now tries to withdraw a team with an unscored game on or before today, before the withdrawal that succeeds. It checks the refusal text in the form's alert and that the team is not marked withdrawn (D-52, default 2). The regenerate wait in the same test is now 30 s instead of Playwright's default 5 s.
+
+**Decided.** Nothing. The longer wait is a test fix, not a choice: the first run failed at the regenerate step, before the new code, and the snapshot showed the button still disabled while the request ran. The generator has timed 6.1 s locally (L-025).
+
+**Measured.** That test passed in 19.1 s against the production build on the second run. Gate: lint 0 errors (1 existing warning in the template's `billing.spec.ts`), typecheck clean, 444 tests in 57 files, `foundation:drift` clean.
+
+**Left behind.** The refusal is checked for one team, the first unscored game's home team. A game earlier than today that is still unscored was not tried apart from today's.
+
 ## Owner review of open defaults (2026-10-13)
 
 No backlog row; the owner chose it when nothing was buildable. Documents only.
