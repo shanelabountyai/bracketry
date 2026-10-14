@@ -1,3 +1,15 @@
+## Browser coverage: the season page, the public playoffs and the changes list (2026-10-14)
+
+No backlog row; the owner chose the gaps `NEXT.md` listed as having no browser test. Nothing under `src/` changed.
+
+**Built.** The first golden-path test now checks the season page before anything is done: the Generate forms are gone and the sentence pointing to "Regenerate the rest" is shown (L-029), the Results section opens with the unscored count, and no game on the last day has a score form (L-028). Placing playoff games says team notices were queued (L-034). After the champion, the public page shows the playoff line, Semifinal 1 and 2 and the Final with their winners, and the champion (L-032), and the champion's feed carries the Final and a semifinal as events (ICAL-02). After the rainout is published, "Changes this week" lists exactly the displaced games, each moved from the rain day to the makeup Saturday (PUB-02).
+
+**Decided.** Nothing.
+
+**Measured.** Passed on its first run: `golden-path` 2 passed in 13.7 s against the production build. Broken on purpose once (the changes count set to n + 1): it failed at the last line with 5 expected and 4 received, so every new check before it ran. Gate: lint 0 errors (1 existing warning in the template's `billing.spec.ts`), typecheck clean, 444 tests in 57 files, `foundation:drift` clean against v1.2.1.
+
+**Left behind.** The results order and the field headings are still only in the unit test. The notice text and the round name inside it are not read. The playoff line is checked to be present, not where it sits.
+
 ## Owner review of the Ledger drafts (2026-10-14)
 
 No backlog row and no code. Ledger posts 114 to 116 were checked against this file and `WRITEUP.md`; every number matched. Two changes, chosen by the owner: 115's opening line said three teams had finished level with no rule to split them, which happened only in fixtures (the demo's three-way tie is split by run differential and head-to-head), so it now describes what the software does; 116 dropped the Lumen line that 115 also carries. The Ledger page gained a `bracketry` project entry. Not checked: the Lumen 25% figure in 114.

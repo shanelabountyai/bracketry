@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
-import { addDays, weekday } from '@/lib/league/days';
+import { addDays, shortDay, weekday } from '@/lib/league/days';
 import type { seedBracketry } from '../scripts/seed-bracketry';
 
 // L-021, golden path 2: a commissioner takes the seeded Eastside season from a published schedule through a
@@ -44,6 +44,15 @@ test('standings through a three-way tie, a bracket and a champion, then a rainou
   await page.goto(base);
   await expect(page.getByRole('row').filter({ hasText: 'Opening day schedule' })).toContainText('published');
   await expect(page.getByRole('row').filter({ hasText: 'Opening day schedule' })).toContainText('0 hard, 0 unplaced');
+  // L-029 (GEN-08): games have scores, so the plain Generate forms are gone and a sentence points to "Regenerate the rest".
+  await expect(page.getByRole('button', { name: 'Generate draft' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'New seed' })).toHaveCount(0);
+  await expect(page.getByText('A game in this season has a score, so a plain run is closed')).toBeVisible();
+  // L-028 (SCORE-10..12): the Results section opens with the unscored count, and a game after today has no score form.
+  await expect(page.getByText(/^(Every game played so far has a score\.|\d+ played games? (has|have) no score yet\.)$/)).toBeVisible();
+  const lastDayGames = page.getByRole('listitem').filter({ hasText: new RegExp(` v .* · ${league.lastDay} \\d\\d:\\d\\d · .* · no score`) });
+  await expect(lastDayGames.first()).toBeVisible();
+  await expect(lastDayGames.filter({ has: page.getByRole('button', { name: 'Save score' }) })).toHaveCount(0);
   await page.getByRole('link', { name: 'Quality' }).click();
   await expect(page.getByRole('heading', { name: 'Score' })).toBeVisible();
   await expect(page.getByRole('row', { name: /Aces/ })).toContainText('8'); // nine teams, everyone plays everyone once
@@ -77,6 +86,7 @@ test('standings through a three-way tie, a bracket and a champion, then a rainou
   const play = async (games: number) => {
     await a.getByRole('button', { name: 'Place games into slots' }).click();
     await expect(a.getByRole('status').filter({ hasText: 'Placed' })).toContainText(`Placed ${games} of ${games} games.`);
+    await expect(a.getByRole('status').filter({ hasText: 'Placed' })).toContainText(/\d+ team notices queued/); // L-034 (BRKT-07)
     await playoffDayArrives();
     await page.reload();
     for (let left = games; left > 0; left--) {
@@ -92,6 +102,20 @@ test('standings through a three-way tie, a bracket and a champion, then a rainou
   await play(2);
   await play(1);
   await expect(a.getByText(/^Champion: \w+$/)).toBeVisible();
+  const champion = (await a.getByText(/^Champion: \w+$/).innerText()).slice('Champion: '.length);
+
+  // The public page (L-032): the playoff line under fourth place, round names, the champion. The champion's feed has the final (L-034, ICAL-02).
+  const publicPage = `/l/${league.slug}/${league.seasonId}`;
+  await page.goto(publicPage);
+  const aPublic = page.locator('#playoffs div', { has: page.getByRole('heading', { name: 'A Division' }) });
+  await expect(page.locator('#standings').getByText('Playoff line: top 4').first()).toBeVisible();
+  await expect(aPublic.getByRole('listitem').filter({ hasText: /^Semifinal 1: \(1\) / })).toContainText('won');
+  await expect(aPublic.getByRole('listitem').filter({ hasText: /^Semifinal 2: / })).toContainText('won');
+  await expect(aPublic.getByRole('listitem').filter({ hasText: /^Final: / })).toContainText(`${champion} won`);
+  await expect(aPublic.getByText(`Champion: ${champion}`)).toBeVisible();
+  const ics = await (await page.request.get(`${publicPage}/calendar.ics?team=${encodeURIComponent(champion)}`)).text();
+  expect(ics).toContain('DESCRIPTION:A Division · Final\r\n');
+  expect(ics).toContain('DESCRIPTION:A Division · Semifinal ');
 
   // Rain on the next game day. Four makeup slots on the Saturday after it, so every displaced game has somewhere to go.
   await page.goto(base);
@@ -115,6 +139,12 @@ test('standings through a three-way tie, a bracket and a champion, then a rainou
   await expect(page.getByRole('row').filter({ hasText: `Rain on ${league.rainDay}` })).toContainText('published');
   await expect(page.getByRole('row').filter({ hasText: 'Opening day schedule' })).toContainText('superseded');
   await expect(page.getByRole('heading', { name: 'Displaced games (0)' })).toBeVisible();
+
+  // L-032 (PUB-02, PUB-06): the public page lists exactly the moved games, each with its new slot and its old one.
+  await page.goto(publicPage);
+  const changes = page.getByRole('region', { name: 'Changes this week' }).getByRole('listitem');
+  await expect(changes).toHaveCount(n);
+  for (const moved of await changes.allInnerTexts()) expect(moved).toMatch(new RegExp(`: now ${shortDay(makeup)} \\d\\d:\\d\\d · \\w+ Diamond, was ${shortDay(league.rainDay)} \\d\\d:\\d\\d · \\w+ Diamond$`));
 });
 
 // The forms no other spec submits: edit a team (L-030), a preview link made and revoked (L-039), a void and the

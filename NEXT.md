@@ -26,19 +26,17 @@ Open from L-025: one season, nine calls, one prompt (D-43); nothing was measured
 
 Open from L-027: D-44 was taken as defaults (the server, not the browser, refuses an empty run box; a season correction's boxes are empty, a playoff correction's are prefilled); confirmed by the owner (D-54). No browser test drives the season score form. The versions table still shows UTC.
 
-Open from L-028: no browser test asserts the results order, the field headings, the unscored count or the missing form on a future game; the markup was not looked at in a browser.
-
-Open from L-029: no browser test asserts the missing Generate buttons or the sentence that replaces them; the markup was not looked at in a browser.
+Open from L-028: no browser test asserts the results order or the field headings (the unscored count and the missing form on a future game are asserted, 2026-10-14).
 
 Open from L-030: A rename is not audited and sends no notice; notices already in the outbox keep the old name and address. A team cannot be deleted or moved to another division.
 
 Open from L-031: D-45's defaults (the confirm line is checked by the browser only; plain Generate stays refused after a void; playoff scores are not voidable); confirmed by the owner (D-54). The confirm line names the game, not the runs typed. A void sends no notice.
 
-Open from L-032: D-46 was taken as defaults (the playoff line is the bracket's size and absent before a bracket; "updated" is the publish time, not the last score); confirmed by the owner (D-54). No browser test shows the playoff line, a round name or the changes list. The width check ran with two short team names. The page has no stylesheet.
+Open from L-032: D-46 was taken as defaults (the playoff line is the bracket's size and absent before a bracket; "updated" is the publish time, not the last score); confirmed by the owner (D-54). The width check ran with two short team names. The page has no stylesheet.
 
 Open from L-035: every public read scores the whole published version and reads every version's report; not timed, not cached. The table ignores `?team=`. A placement whose game is no longer a season pairing is left out of the counts without a word. Many start times or fields were not tried in a browser.
 
-Open from L-034: D-47 was taken as defaults (only a season-against-playoff clash refuses a publish; the playoff notice is queued at placement; playoff games are in the feed, not in the page's schedule list); confirmed by the owner (D-54). The refusal names the playoff slot, not the teams. Regenerating a bracket drops slots and sends no notice. No browser test reads a playoff notice or a playoff event in the feed.
+Open from L-034: D-47 was taken as defaults (only a season-against-playoff clash refuses a publish; the playoff notice is queued at placement; playoff games are in the feed, not in the page's schedule list); confirmed by the owner (D-54). The refusal names the playoff slot, not the teams. Regenerating a bracket drops slots and sends no notice. The browser test checks that playoff notices are queued, not their text.
 
 Open from L-037: D-48 was taken as defaults (points 0 to 9 with win ≥ tie ≥ loss; cap 1 to 99; forfeit score 0 to 99; a change after the first score needs a reason and re-ranks the whole season, with no "from this date"); confirmed by the owner (D-54). The public page does not state the points or the cap.
 
