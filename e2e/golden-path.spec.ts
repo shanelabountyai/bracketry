@@ -161,6 +161,17 @@ test('edit a team, preview and revoke a draft, void and re-enter a score, withdr
   await expect(game).toContainText('· no score');
   await expect(game).toContainText('Voided');
 
+  // D-52 (2): the voided game is now a game before today with no score, so its home team is refused, and nothing changes.
+  // The voided game, not tonight's: the seed only has games on Tuesdays and Thursdays, so tonight may have none.
+  const owing = (await game.innerText()).split(' v ')[0]!.trim();
+  const busy = page.locator('section', { has: page.getByRole('heading', { name: / Division \(/ }) }).getByRole('listitem').filter({ hasText: owing });
+  await busy.getByText('Withdraw', { exact: true }).click();
+  await busy.getByLabel('Reason').fill('Not enough players');
+  await busy.getByLabel(`Withdraw ${owing} and forfeit its unplayed games`).check();
+  await busy.getByRole('button', { name: 'Withdraw team' }).click();
+  await expect(busy.getByRole('alert')).toContainText(`${owing} has games on or before today with no score`);
+  await expect(busy).not.toContainText(/withdrew \d{4}-\d\d-\d\d/);
+
   // The confirm line (SCORE-13): without the tick the browser sends nothing; with it the score is saved.
   await game.getByRole('spinbutton').nth(0).fill('9');
   await game.getByRole('spinbutton').nth(1).fill('1');
@@ -173,15 +184,6 @@ test('edit a team, preview and revoke a draft, void and re-enter a score, withdr
 
   // A team withdraws (WD-01 to WD-03). One that plays tonight would be refused until tonight has scores, so take one that does not.
   const tonight = (await page.locator('li', { has: page.getByRole('button', { name: 'Save score' }) }).allInnerTexts()).join(' ');
-  // D-52 (2): a team with an unscored game on or before today is refused, and nothing changes.
-  const owing = (await page.locator('li', { has: page.getByRole('button', { name: 'Save score' }) }).filter({ hasText: '· no score' }).first().innerText()).split(' v ')[0]!.trim();
-  const busy = page.locator('section', { has: page.getByRole('heading', { name: / Division \(/ }) }).getByRole('listitem').filter({ hasText: owing });
-  await busy.getByText('Withdraw', { exact: true }).click();
-  await busy.getByLabel('Reason').fill('Not enough players');
-  await busy.getByLabel(`Withdraw ${owing} and forfeit its unplayed games`).check();
-  await busy.getByRole('button', { name: 'Withdraw team' }).click();
-  await expect(busy.getByRole('alert')).toContainText(`${owing} has games on or before today with no score`);
-  await expect(busy).not.toContainText(/withdrew \d{4}-\d\d-\d\d/);
   const leaving = ['Jets', 'Kings', 'Lions', 'Mustangs', 'Nomads', 'Aces', 'Bandits', 'Dukes', 'Eagles'].find((t) => !tonight.includes(t))!;
   const team = page.locator('section', { has: page.getByRole('heading', { name: / Division \(/ }) }).getByRole('listitem').filter({ hasText: leaving });
   await team.getByText('Withdraw', { exact: true }).click();

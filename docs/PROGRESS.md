@@ -2,6 +2,8 @@
 
 No backlog row and no code. Ledger posts 114 to 116 were checked against this file and `WRITEUP.md`; every number matched. Two changes, chosen by the owner: 115's opening line said three teams had finished level with no rule to split them, which happened only in fixtures (the demo's three-way tie is split by run differential and head-to-head), so it now describes what the software does; 116 dropped the Lumen line that 115 also carries. The Ledger page gained a `bracketry` project entry. Not checked: the Lumen 25% figure in 114.
 
+**Also fixed.** CI went red on this docs-only push: the withdrawal refusal added in `11c7973` looked for an unscored game on or before today, which the seed only leaves on a Tuesday or Thursday (its game days). It passed at 04:36 UTC (Tuesday in Central) and failed at 05:10 UTC (Wednesday). The refusal now uses the game the test has just voided, which is in the past on any weekday. `e2e/golden-path.spec.ts`: 2 passed locally on a Wednesday.
+
 ## Withdrawal refusal in a browser (2026-10-13)
 
 No backlog row; the owner chose this gap from the ones `NEXT.md` listed. Nothing under `src/` changed.
