@@ -2,7 +2,7 @@
 
 The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; every row is now ✅ except L-041, which is ✖ (not built while D-36 stands, D-56). L-040 was built on 2026-10-14 on `saas-foundation` v1.3.0 (D-55). Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
 
-PICK UP HERE: the owner's finalize list, items 5 and 6. (5) Seed the demo, start the production build, and retake the exec brief's screenshots (standings with the reason under the team name, the quality page with the floor) plus one each of a withdrawal, a preview link and crossover rounds, into `docs/screenshots/`. (6) Ask the owner before deleting `~/Projects/_to_delete_bracketry` and `~/Projects/bracketry-starter`.
+PICK UP HERE: the owner's finalize list, item 6 only: ask the owner before deleting `~/Projects/_to_delete_bracketry` and `~/Projects/bracketry-starter`. Item 5 is done: six screenshots in `docs/screenshots/` (2026-10-14, production build, demo seed). The exec brief itself still shows the 2026-10-12 images; swapping them in is a republish of the brief, not done.
 
 Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The Lumen 25% utilization figure in Ledger post 114 is the owner's and was not checked. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
