@@ -1,3 +1,11 @@
+## Owner review of open defaults (2026-10-13)
+
+No backlog row; the owner chose it when nothing was buildable. Documents only.
+
+**Decided.** D-54: every default inside D-44 to D-53 confirmed as written, each against the alternatives named in the row.
+
+**Left behind.** D-31 to D-35 and D-41 were not part of this review and are still open in `NEXT.md`, as are the gaps that are not choices (tests not written, things not tried in a browser or a calendar app).
+
 ## Coverage and documents pass (2026-10-13)
 
 No backlog row; the owner chose it when nothing else was buildable. No behaviour changed and nothing under `src/` was touched.
