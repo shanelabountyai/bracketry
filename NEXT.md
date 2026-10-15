@@ -2,7 +2,7 @@
 
 The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; every row is now ✅ except L-041, which is ✖ (not built while D-36 stands, D-56). L-040 was built on 2026-10-14 on `saas-foundation` v1.3.0 (D-55). Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
 
-PICK UP HERE: nothing. The owner's finalize list (2026-10-14) is done: template v1.3.0, L-040, L-041 marked ✖ (D-56), screenshots in `docs/screenshots/`, and the two superseded folders deleted with the owner's yes. A new session should ask the owner what they want. Open, if wanted: republish the exec brief with the new screenshots and a line on the scorekeeper role.
+PICK UP HERE: nothing. The owner's finalize list (2026-10-14) is done: template v1.3.0, L-040, L-041 marked ✖ (D-56), screenshots in `docs/screenshots/`, and the two superseded folders deleted with the owner's yes. A new session should ask the owner what they want. The exec brief is at version 4 (2026-10-15) with the new screenshots and the scorekeeper role.
 
 Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The Lumen 25% utilization figure in Ledger post 114 is the owner's and was not checked. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
