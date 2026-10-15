@@ -1,5 +1,7 @@
 # NEXT
 
+**Complete (2026-10-15).** Marked shipped in the build log (card 18, version 36), with the write-up and exec brief linked.
+
 The P0 backlog is done and the project was closed at L-022 (2026-10-12), then reopened by the owner for P1; every row is now ✅ except L-041, which is ✖ (not built while D-36 stands, D-56). L-040 was built on 2026-10-14 on `saas-foundation` v1.3.0 (D-55). Closure artifacts are in `docs/RELEASE_NOTES.md`. Not deployed (D-36); nothing bills except CI minutes (D-37).
 
 PICK UP HERE: nothing. The owner's finalize list (2026-10-14) is done: template v1.3.0, L-040, L-041 marked ✖ (D-56), screenshots in `docs/screenshots/`, and the two superseded folders deleted with the owner's yes. A new session should ask the owner what they want. The exec brief is at version 4 (2026-10-15) with the new screenshots and the scorekeeper role.
