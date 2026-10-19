@@ -32,6 +32,7 @@ The first two lines are the same on every run. The third depends on the weekday:
 | Who | How to sign in | Where the credential lives |
 |---|---|---|
 | Commissioner, owner of Eastside Rec Softball | `/demo`, click `commissioner@eastside.demo.test`. No password. | Created by `scripts/seed-bracketry.ts`. Demo sign-in only works for accounts a seed marked, and only with `DEMO_MODE=1`. |
+| Scorekeeper, a volunteer at the field | `/demo`, click `scorekeeper@eastside.demo.test`. No password, no TOTP. | Created by `scripts/seed-bracketry.ts` (L-040). Holds only `results.write` from `saas-foundation` v1.3.0 (D-55). |
 | Anyone (coach, player, parent) | No account. Open `/l/eastside/<season id>`. | Nothing to hold. |
 
 The commissioner has a TOTP secret set, because owners must. It is the fixed public value `DEMO_TOTP_SECRET` in `scripts/seed-demo.ts`; demo sign-in skips the prompt.
@@ -76,7 +77,7 @@ Sign in at `http://localhost:5100/demo`, then Eastside Rec Softball → Seasons 
 
 ## Part 3: if there is time
 
-Each stop stands alone, as the commissioner, on the same seeded season. None of them is needed for Part 2; do them after it, or the numbers quoted there change. Stops 12, 15, 16, 17 and 18 are the steps of the second test in `e2e/golden-path.spec.ts` and stops 13 and 14 are in `e2e/public-league.spec.ts`; both were run on 2026-10-13.
+Each stop stands alone, as the commissioner, on the same seeded season. None of them is needed for Part 2; do them after it, or the numbers quoted there change. Stops 12, 15, 16, 17 and 18 are the steps of the second test in `e2e/golden-path.spec.ts` and stops 13 and 14 are in `e2e/public-league.spec.ts`; both were run on 2026-10-13. Stop 19 follows that file's scorekeeper test, added with L-040 on 2026-10-14.
 
 | # | Screen | Do | Say |
 |---|---|---|---|
@@ -87,6 +88,7 @@ Each stop stands alone, as the commissioner, on the same seeded season. None of 
 | 16 | Season page → Divisions and teams | Open **Withdraw** on a team that does not play today, give a reason, tick the line, click **Withdraw team**. | "Its unplayed games are forfeits and come off the schedule in a draft that moves no other game. What it already played stands. It is listed under the table with its record, not ranked." |
 | 17 | Standings → Points and runs | Change **Points for a win** to 3, give a reason, click **Save points and runs**. | "Games have scores, so it asks why and logs it. The table is worked out again from every score; nothing was stored to go stale." |
 | 18 | Seasons → Copy a season | Name it, give a first and last day, click **Copy season**. On the new season set **Crossover rounds** to 1. | "Divisions, teams and weekly slots come along; blackouts, scores and schedules do not. One crossover round is six games: each B Division team plays one A Division team, and the game counts in each team's own table." |
+| 19 | Sign out, then `/demo` → `scorekeeper@eastside.demo.test` → Season page | Correct a past score: type the two scores, give a reason, tick the line naming the game, click **Save correction**. | "A volunteer can enter and correct scores and nothing else. Publish, close a day, withdraw, reschedule: the buttons are not there, and the actions refuse if called. Reading setup, rainouts and standings is still allowed." |
 
 ## Troubleshooting
 
