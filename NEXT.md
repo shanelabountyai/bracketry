@@ -6,7 +6,7 @@ The P0 backlog is done and the project was closed at L-022 (2026-10-12), then re
 
 PICK UP HERE: nothing. The owner's finalize list (2026-10-14) is done: template v1.3.0, L-040, L-041 marked ✖ (D-56), screenshots in `docs/screenshots/`, and the two superseded folders deleted with the owner's yes. A new session should ask the owner what they want. The exec brief is at version 4 (2026-10-15) with the new screenshots and the scorekeeper role.
 
-Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The Lumen 25% utilization figure in Ledger post 114 is the owner's and was not checked. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
+The exec brief and the build log were shared by link by the owner on 2026-10-20. Needs the owner: The Lumen 25% utilization figure in Ledger post 114 is the owner's and was not checked. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
 Open from L-040: a scorekeeper can read the setup, rainout and standings pages; only the forms are hidden and the actions refuse. `docs/DEMO.md` (stop 19) and the exec brief (version 4) now cover the role. Other clones owe `saas-foundation` v1.3.0 by 2026-10-21 (template work, in each clone's own session).
 
