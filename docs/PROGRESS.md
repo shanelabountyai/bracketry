@@ -12,6 +12,8 @@ No backlog row; item 5 of the owner's finalize list. Six PNGs in `docs/screensho
 
 **Left behind.** Other clones owe v1.3.0 by 2026-10-21, each in its own session; that is template work, not this repo's. A scorekeeper can open the setup, rainout and standings pages and read them; only the forms are hidden, and the actions refuse. The scorekeeper is not told on the page that they cannot do more. Nothing new was added to `docs/DEMO.md` or the exec brief for the role.
 
+**Commits.** Template `e8c0f74` (v1.3.0), merge `e954fa1`, L-040 `223dc47`. Re-verified 2026-10-20 at `3eb0235` with no code change: lint 0 errors (1 existing warning), typecheck clean, 453 tests in 59 files, `foundation:drift` clean against v1.3.0.
+
 ## Browser coverage: the season page, the public playoffs and the changes list (2026-10-14)
 
 No backlog row; the owner chose the gaps `NEXT.md` listed as having no browser test. Nothing under `src/` changed.
