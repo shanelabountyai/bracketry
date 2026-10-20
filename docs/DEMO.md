@@ -113,7 +113,7 @@ Each stop stands alone, as the commissioner, on the same seeded season. None of 
 - **A withdrawal cannot be undone in the app**, and a team that withdraws after a bracket is seeded stays in the bracket; its playoff games are forfeited by hand.
 - **Clinched and eliminated ignore tiebreakers** (D-38). A team that gets in only on a tiebreaker is not marked.
 - **Notices are queued, not sent.** No mail key is set on the laptop, so the per-team notices sit in the outbox.
-- **Commissioners enter the scores.** A scorekeeper role needs a change to the shared starter (D-30). Coaches have no accounts at all.
+- **A scorekeeper can read more than they can change** (L-040). The setup, rainout and standings pages are readable; only the forms are hidden and the actions refuse. Coaches have no accounts at all.
 - **A draft can be shown before it is public, by a secret link** (D-53): on the season page, "Create preview link" beside a draft version. Anyone with the link can read it until it expires or is revoked, so it is as private as the inbox it was sent to.
 - **A published season is public, with no opt-out** (D-33), and public reads share one rate limit of 60 per 15 minutes per address.
 - **Generate after the first score ignores played games.** "Regenerate the rest" is the action that keeps them; publish refuses a draft that would move a scored game.

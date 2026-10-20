@@ -8,7 +8,7 @@ PICK UP HERE: nothing. The owner's finalize list (2026-10-14) is done: template 
 
 Needs the owner: the exec brief is private until shared, and its footer links the build log, which a reader can only open once that page is shared too. The Lumen 25% utilization figure in Ledger post 114 is the owner's and was not checked. D-31 to D-35 were taken as defaults; say so if any part should change. D-33's main call: a season is public as soon as a version is published, with no opt-out. `next dev` appends an agent-rules block to `CLAUDE.md` on every start; it has been reverted each time.
 
-Open from L-040: a scorekeeper can read the setup, rainout and standings pages; only the forms are hidden and the actions refuse. Nothing about the role is in `docs/DEMO.md` or the exec brief yet. Other clones owe `saas-foundation` v1.3.0 by 2026-10-21 (template work, in each clone's own session).
+Open from L-040: a scorekeeper can read the setup, rainout and standings pages; only the forms are hidden and the actions refuse. `docs/DEMO.md` (stop 19) and the exec brief (version 4) now cover the role. Other clones owe `saas-foundation` v1.3.0 by 2026-10-21 (template work, in each clone's own session).
 
 Open from L-039: D-53's defaults (publish permission to make or revoke; 404 once the draft is published, with no redirect; 1, 7 or 30 days; moved games compared with the published version; no calendar feed in a preview); confirmed by the owner (D-54). A draft that is never published keeps its link alive until expiry or revoke. `noindex` and `no-referrer` are meta tags on the page, not headers.
 
