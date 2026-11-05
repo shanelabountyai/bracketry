@@ -1,3 +1,9 @@
+## saas-foundation v1.4.1 (2026-11-04)
+
+No backlog row; a template upgrade from v1.3.0, taking v1.3.1 (`security:`, next 16.3.8), v1.4.0 (the `filterListedOrgs` hook) and v1.4.1 (`security:`, critical: next 16.4.5 for the Image Optimization RCE, zod 4.6.7, prisma 7.10.1, lockfile bumps for sharp, source-map-js and fast-uri) in one merge of `v1.4.1` (`fca3c57`). One conflict, `NEXT.md`, kept as ours. `src/app/org-hooks.ts` merged clean and keeps the template default (`return orgs`): bracketry hides no orgs. `/onboarding` and `/demo` were never customised here, so they took the template's wiring as is. `/o/[org]/projects` still exists, so `review-2026-10-12-demo-projects.test.ts` stays. Nothing in `src/lib/league/` or the score actions changed.
+
+**Measured.** `npm ci`, then `npm audit --omit=dev`: 0 vulnerabilities. Lint 0 errors (1 existing warning), typecheck clean, 488 tests in 63 files against the local test DB, `foundation:drift` clean against v1.4.1, `npm run build` clean. No e2e locally; CI runs it.
+
 ## Screenshots retaken (2026-10-14)
 
 No backlog row; item 5 of the owner's finalize list. Six PNGs in `docs/screenshots/`, taken by a Playwright script against `npm run build && npm start` on the demo seed (2026-10-14, a Wednesday): `01-standings-why` (the commissioner's table with the Why column and the three-way tie), `02-quality-floor` (cost 122 against the counted floor of 100), `03-withdrawal-public` (Lions withdrawn and published; the public table's "Withdrew" line), `04a-preview-link-created` and `04b-preview-page` (a "regenerate the rest" draft and its preview), `05-crossover` (one crossover round on a copied season: 6 games). The withdrawal, the drafts and the copy were made for the pictures; the demo was reseeded afterwards. The URL in `04a` was only ever valid against the local database. Not done: the exec brief was not republished with these images.
