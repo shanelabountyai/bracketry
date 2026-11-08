@@ -1,3 +1,9 @@
+## saas-foundation v1.6.0 (2026-11-07)
+
+No backlog row; a template upgrade from v1.4.1, taking v1.5.0 (vitest 2.1 -> 5.1) and v1.6.0 (RLS policies, org data export, SSO and API-key modules, org events, all opt-in) in one merge of `v1.6.0` (`b131bc0`). Conflicts: `NEXT.md` (ours), `package-lock.json` (theirs, then `npm install`), `prisma/schema/core.prisma` (both sets of Org back-relations), `src/app/o/[org]/layout.tsx` (the Seasons link plus the template's new nav links), `tests/fixtures/app.ts` (the clone's seed with the template's comment). `README.md`, `CLONES.md` and `BACKLOG.md` kept as ours. Choices in D-57.
+
+**Measured.** `npm ci`, then `npm audit --omit=dev`: 0 vulnerabilities. Lint 0 errors (1 existing warning), typecheck clean, 565 passed and 36 skipped (RLS-enforce suites, enforce off) in 69 files against a scratch local DB built from this branch's migrations, `foundation:drift` clean against v1.6.0, `npm run build:test` clean. No e2e locally; CI runs it.
+
 ## saas-foundation v1.4.1 (2026-11-04)
 
 No backlog row; a template upgrade from v1.3.0, taking v1.3.1 (`security:`, next 16.3.8), v1.4.0 (the `filterListedOrgs` hook) and v1.4.1 (`security:`, critical: next 16.4.5 for the Image Optimization RCE, zod 4.6.7, prisma 7.10.1, lockfile bumps for sharp, source-map-js and fast-uri) in one merge of `v1.4.1` (`fca3c57`). One conflict, `NEXT.md`, kept as ours. `src/app/org-hooks.ts` merged clean and keeps the template default (`return orgs`): bracketry hides no orgs. `/onboarding` and `/demo` were never customised here, so they took the template's wiring as is. `/o/[org]/projects` still exists, so `review-2026-10-12-demo-projects.test.ts` stays. Nothing in `src/lib/league/` or the score actions changed.
