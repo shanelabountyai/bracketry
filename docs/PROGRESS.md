@@ -1,3 +1,9 @@
+## saas-foundation v1.6.1 (2026-11-09)
+
+No backlog row; a template patch from v1.6.0: the billing/notifications lines in `src/core/db/cross-org.ts` now carry their module markers, `foundation:status` matches only leading `security:`, and one unit test guards the markers. No migration, no env change; both modules kept, so no cross-org lines removed. NEXT.md conflict kept ours.
+
+**Measured.** `npm ci`, typecheck clean, unit tests 225 passed, `foundation:drift` clean against v1.6.1. Integration and e2e left to CI.
+
 ## saas-foundation v1.6.0 (2026-11-07)
 
 No backlog row; a template upgrade from v1.4.1, taking v1.5.0 (vitest 2.1 -> 5.1) and v1.6.0 (RLS policies, org data export, SSO and API-key modules, org events, all opt-in) in one merge of `v1.6.0` (`b131bc0`). Conflicts: `NEXT.md` (ours), `package-lock.json` (theirs, then `npm install`), `prisma/schema/core.prisma` (both sets of Org back-relations), `src/app/o/[org]/layout.tsx` (the Seasons link plus the template's new nav links), `tests/fixtures/app.ts` (the clone's seed with the template's comment). `README.md`, `CLONES.md` and `BACKLOG.md` kept as ours. Choices in D-57.
